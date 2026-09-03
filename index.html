@@ -1,1081 +1,434 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Карточная игра «Дурак»</title>
-    <script src="/socket.io/socket.io.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
-
-        :root {
-            --table-green: #0d5c32;
-            --card-w: 72px;
-            --card-h: 104px;
-        }
-
-        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
-
-        body {
-            margin: 0;
-            padding: 0;
-            background: #06331b;
-            font-family: 'Roboto', sans-serif;
-            color: #fff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        button, input { font-family: inherit; }
-
-        #game-container {
-            width: 100vw;
-            height: 100vh;
-            max-width: 1366px;
-            max-height: 768px;
-            background: var(--table-green);
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 12px;
-            box-shadow: inset 0 0 100px rgba(0,0,0,0.5);
-            overflow: hidden;
-        }
-
-        .top-navbar {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 40px;
-            background: rgba(0,0,0,0.4);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 15px;
-            z-index: 100;
-            font-size: 13px;
-        }
-
-        .nav-left, .nav-right {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            cursor: pointer;
-            opacity: 0.9;
-        }
-
-        .nav-left:hover, .nav-right:hover { opacity: 1; }
-
-        .room-badge {
-            background: rgba(241, 196, 15, 0.2);
-            border: 1px solid #f1c40f;
-            color: #f1c40f;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-weight: bold;
-            letter-spacing: 1px;
-        }
-
-        #room-code-display { display: none; }
-
-        #main-menu {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.75);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 500;
-        }
-
-        .menu-modal {
-            background: #111a14;
-            border: 1px solid #1e3325;
-            padding: 25px;
-            border-radius: 10px;
-            width: calc(100% - 30px);
-            max-width: 420px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .menu-title { font-size: 20px; font-weight: 700; text-align: center; }
-
-        .players-select-box {
-            display: flex;
-            background: #09100c;
-            padding: 12px;
-            border-radius: 8px;
-            width: 100%;
-            justify-content: space-around;
-        }
-
-        .p-opt {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-            cursor: pointer;
-            opacity: 0.5;
-        }
-
-        .p-opt.active { opacity: 1; }
-
-        .p-opt-icon {
-            width: 36px;
-            height: 36px;
-            background: #164e2d;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 12px;
-            font-weight: bold;
-            border: 2px solid transparent;
-        }
-
-        .p-opt.active .p-opt-icon {
-            border-color: #2ecc71;
-            background: #1b663b;
-        }
-
-        .p-opt-lbl { font-size: 11px; color: #a0b5a8; }
-
-        .btn-start {
-            width: 100%;
-            padding: 12px;
-            background: #f1c40f;
-            border: none;
-            border-radius: 6px;
-            color: #111;
-            font-weight: bold;
-            font-size: 14px;
-            cursor: pointer;
-            text-transform: uppercase;
-        }
-
-        .btn-start:hover { background: #f39c12; }
-
-        .menu-divider { width: 100%; height: 1px; background: #1c2b21; }
-
-        .room-join-row { display: flex; gap: 8px; width: 100%; }
-
-        .room-input {
-            flex: 1;
-            min-width: 0;
-            background: #09100c;
-            border: 1px solid #1c2b21;
-            padding: 10px;
-            border-radius: 6px;
-            color: #fff;
-            text-align: center;
-            text-transform: uppercase;
-            outline: none;
-        }
-
-        .room-input:focus { border-color: #2ecc71; }
-
-        #game-over-modal {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 600;
-        }
-
-        .modal-card {
-            background: #111a14;
-            border: 2px solid #2ecc71;
-            padding: 30px;
-            border-radius: 12px;
-            width: calc(100% - 30px);
-            max-width: 380px;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        .modal-title { font-size: 22px; font-weight: bold; color: #f1c40f; }
-        .modal-subtitle { font-size: 14px; color: #a0b5a8; }
-
-        .btn-rematch {
-            width: 100%;
-            padding: 12px;
-            background: #2ecc71;
-            border: none;
-            border-radius: 6px;
-            color: #fff;
-            font-weight: bold;
-            font-size: 15px;
-            cursor: pointer;
-            text-transform: uppercase;
-            box-shadow: 0 4px 10px rgba(46, 204, 113, 0.4);
-        }
-
-        .btn-rematch:hover { background: #27ae60; }
-        .btn-rematch:disabled { cursor: not-allowed; }
-
-        .rematch-status { font-size: 12px; color: #f1c40f; min-height: 16px; }
-
-        .seat {
-            position: absolute;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            z-index: 20;
-        }
-
-        .seat-top { top: 50px; left: 50%; transform: translateX(-50%); }
-        .seat-left { top: 42%; left: 20px; transform: translateY(-50%); }
-        .seat-right { top: 42%; right: 20px; transform: translateY(-50%); }
-
-        .player-profile {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            position: relative;
-            margin-bottom: 6px;
-        }
-
-        .avatar {
-            width: 42px;
-            height: 42px;
-            background: #2c3e50;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border: 2px solid #fff;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.4);
-            overflow: hidden;
-        }
-
-        .avatar img { width: 100%; height: 100%; object-fit: cover; }
-
-        .p-name {
-            font-size: 11px;
-            font-weight: 500;
-            background: rgba(0,0,0,0.5);
-            padding: 2px 8px;
-            border-radius: 10px;
-            margin-top: -8px;
-            z-index: 5;
-            white-space: nowrap;
-        }
-
-        .speech-bubble {
-            position: absolute;
-            top: -26px;
-            background: #fff;
-            color: #111;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: bold;
-            white-space: nowrap;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            z-index: 10;
-        }
-
-        .speech-bubble.turn {
-            background: #f1c40f;
-            color: #111;
-            animation: pulse 1.2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.08); }
-            100% { transform: scale(1); }
-        }
-
-        .opp-hand { display: flex; }
-
-        .card-back-css {
-            width: 24px;
-            height: 35px;
-            background: #2980b9;
-            border: 1px solid #fff;
-            border-radius: 3px;
-            margin-left: -12px;
-            box-shadow: -2px 2px 5px rgba(0,0,0,0.4);
-            background-image: repeating-linear-gradient(
-                45deg,
-                #1b4f72 0,
-                #1b4f72 2px,
-                #2980b9 2px,
-                #2980b9 4px
-            );
-        }
-
-        .opp-hand .card-back-css:first-child { margin-left: 0; }
-
-        .seat-left .opp-hand,
-        .seat-right .opp-hand { flex-direction: column; }
-
-        .seat-left .card-back-css,
-        .seat-right .card-back-css {
-            margin-left: 0;
-            margin-top: -24px;
-            width: 35px;
-            height: 24px;
-        }
-
-        .seat-left .opp-hand .card-back-css:first-child,
-        .seat-right .opp-hand .card-back-css:first-child { margin-top: 0; }
-
-        #deck-area {
-            position: absolute;
-            left: 340px;
-            top: 42%;
-            transform: translateY(-50%);
-            display: flex;
-            align-items: center;
-            z-index: 10;
-        }
-
-        .card-css {
-            width: var(--card-w);
-            height: var(--card-h);
-            background: #fff;
-            color: #000;
-            border-radius: 6px;
-            border: 1px solid #bbb;
-            box-shadow: -2px 3px 8px rgba(0,0,0,0.4);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 6px;
-            font-weight: bold;
-            font-size: 16px;
-            cursor: pointer;
-            position: relative;
-        }
-
-        .card-css.red { color: #c0392b; }
-        .card-css.black { color: #2c3e50; }
-
-        .card-corner {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            line-height: 1;
-            font-size: 14px;
-        }
-
-        .card-center-suit {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 26px;
-        }
-
-        .deck-top-css {
-            width: var(--card-w);
-            height: var(--card-h);
-            background: #2980b9;
-            border: 2px solid #fff;
-            border-radius: 6px;
-            box-shadow: -2px 3px 8px rgba(0,0,0,0.4);
-            cursor: pointer;
-            background-image: repeating-linear-gradient(
-                45deg,
-                #1b4f72 0,
-                #1b4f72 3px,
-                #2980b9 3px,
-                #2980b9 6px
-            );
-        }
-
-        .trump-card-under {
-            position: absolute;
-            left: 0;
-            top: 0;
-            transform: rotate(90deg);
-            z-index: -1;
-        }
-
-        .deck-counter-badge {
-            position: absolute;
-            right: -25px;
-            bottom: 0;
-            background: rgba(0,0,0,0.7);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: bold;
-            color: #f1c40f;
-        }
-
-        #table-area {
-            position: absolute;
-            left: 430px;
-            right: 260px;
-            top: 38%;
-            transform: translateY(-50%);
-            min-height: 120px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 16px;
-            align-items: center;
-            justify-content: center;
-            z-index: 15;
-        }
-
-        .table-pair {
-            position: relative;
-            width: calc(var(--card-w) + 20px);
-            height: var(--card-h);
-        }
-
-        .table-pair .card-css:first-child {
-            position: absolute;
-            left: 0;
-            top: 0;
-        }
-
-        .table-pair .card-css:nth-child(2) {
-            position: absolute;
-            left: 18px;
-            top: 14px;
-            z-index: 2;
-        }
-
-        #player-area {
-            position: absolute;
-            bottom: 15px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 100%;
-            max-width: 850px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            z-index: 25;
-        }
-
-        .my-hand {
-            display: flex;
-            justify-content: center;
-            align-items: flex-end;
-            margin-top: 6px;
-            max-width: 100%;
-            overflow: visible;
-        }
-
-        .my-card-wrap {
-            cursor: pointer;
-            transition: transform 0.15s;
-            margin-left: -28px;
-            position: relative;
-        }
-
-        .my-card-wrap:first-child { margin-left: 0; }
-
-        .my-card-wrap:hover {
-            transform: translateY(-16px);
-            z-index: 100;
-        }
-
-        .action-bar {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 6px;
-            min-height: 32px;
-        }
-
-        .action-btn {
-            padding: 8px 22px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 13px;
-            border: none;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-        }
-
-        .btn-take { background: #e74c3c; color: #fff; }
-        .btn-done { background: #f1c40f; color: #111; }
-        .btn-pass { background: #3498db; color: #fff; }
-
-        .action-btn:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-
-        #msg-box {
-            background: rgba(0,0,0,0.6);
-            padding: 4px 14px;
-            border-radius: 12px;
-            font-size: 12px;
-            color: #f1c40f;
-            margin-bottom: 6px;
-            text-align: center;
-        }
-
-        @media (max-width: 900px) {
-            :root { --card-w: 58px; --card-h: 84px; }
-            #deck-area { left: 100px; }
-            #table-area { left: 180px; right: 140px; }
-            .card-css { font-size: 13px; padding: 4px; }
-            .card-center-suit { font-size: 21px; }
-            .card-corner { font-size: 12px; }
-            .my-card-wrap { margin-left: -22px; }
-            .my-hand { max-width: 96vw; }
-            .seat-left { left: 5px; }
-            .seat-right { right: 5px; }
-        }
-
-        @media (max-width: 600px) {
-            :root { --card-w: 50px; --card-h: 72px; }
-            #deck-area { left: 55px; top: 38%; }
-            #table-area { left: 105px; right: 75px; top: 36%; gap: 8px; }
-            .table-pair { width: 66px; height: 72px; }
-            .table-pair .card-css:nth-child(2) { left: 12px; top: 10px; }
-            .card-center-suit { font-size: 18px; }
-            .card-corner { font-size: 10px; }
-            .seat-left { top: 38%; }
-            .seat-right { top: 38%; }
-            #player-area { bottom: 5px; }
-            .action-btn { padding: 7px 12px; font-size: 11px; }
-            .top-navbar { padding: 0 8px; }
-            .nav-left, .nav-right { gap: 6px; font-size: 11px; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Дурак — карточная игра</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+  :root{
+    --felt:#0b6b3a;
+    --felt-dark:#054a27;
+    --gold:#e8c14a;
+    --red:#c62828;
+    --black:#1b1b1b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:'Segoe UI',Roboto,Arial,sans-serif;
+    background:radial-gradient(circle at center, var(--felt) 0%, var(--felt-dark) 100%);
+    height:100vh; overflow:hidden; color:#fff;
+  }
+  #menu{
+    position:fixed; inset:0; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:18px;
+    background:radial-gradient(circle at center, var(--felt) 0%, var(--felt-dark) 100%);
+    z-index:50;
+  }
+  #menu h1{ font-size:2.4em; margin:0; text-shadow:2px 2px 4px #000; letter-spacing:2px;}
+  .menu-card{
+    background:rgba(0,0,0,0.35); padding:24px 32px; border-radius:16px;
+    border:1px solid rgba(255,255,255,0.15); display:flex; flex-direction:column; gap:12px;
+    min-width:280px;
+  }
+  .menu-card label{font-size:0.9em; opacity:0.85;}
+  select, input[type=text]{
+    padding:8px 10px; border-radius:8px; border:none; font-size:1em;
+  }
+  button{
+    cursor:pointer; border:none; border-radius:10px; padding:10px 18px;
+    font-size:1em; font-weight:600; transition:transform .1s ease, box-shadow .1s ease;
+  }
+  button:active{transform:scale(0.96);}
+  .btn-primary{ background:var(--gold); color:#3a2a00; box-shadow:0 3px 0 #a9862c;}
+  .btn-secondary{ background:#3a7bd5; color:#fff; box-shadow:0 3px 0 #244f8c;}
+  .btn-danger{ background:var(--red); color:#fff; box-shadow:0 3px 0 #7a1414;}
+  .btn-yellow{ background:var(--gold); color:#3a2a00; box-shadow:0 3px 0 #a9862c;}
+  .btn-blue{ background:#3a7bd5; color:#fff; box-shadow:0 3px 0 #244f8c;}
+  .row{display:flex; gap:10px;}
+  hr.sep{width:100%; border:none; border-top:1px solid rgba(255,255,255,0.2); margin:6px 0;}
+
+  #game{ position:fixed; inset:0; display:none; }
+  #topbar{
+    position:absolute; top:8px; left:0; right:0; display:flex; justify-content:center;
+    gap:16px; font-size:0.85em; opacity:0.9; z-index:10;
+  }
+  #logbox{
+    position:absolute; top:36px; left:10px; width:230px; max-height:130px; overflow-y:auto;
+    background:rgba(0,0,0,0.35); border-radius:10px; padding:8px 10px; font-size:0.78em; line-height:1.4em;
+    z-index:10;
+  }
+  #deckArea{
+    position:absolute; top:50%; left:60px; transform:translateY(-50%);
+    display:flex; flex-direction:column; align-items:center; gap:8px; z-index:5;
+  }
+  #deckCount{font-size:0.8em; opacity:0.85;}
+  .card{
+    width:64px; height:92px; border-radius:8px; background:#fff; color:var(--black);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-weight:700; font-size:1.3em; box-shadow:0 2px 6px rgba(0,0,0,0.5);
+    user-select:none; position:relative; border:1px solid #ccc;
+  }
+  .card.red{ color:var(--red); }
+  .card.back{
+    background:repeating-linear-gradient(45deg, #1a3b8f, #1a3b8f 6px, #274bb5 6px, #274bb5 12px);
+    border:2px solid #0d1f4d;
+  }
+  .card.small{ width:44px; height:64px; font-size:0.85em; }
+  .card.playable{ box-shadow:0 0 0 3px var(--gold), 0 4px 10px rgba(0,0,0,0.6); cursor:pointer; transform:translateY(-6px); }
+  .card.playable:hover{ transform:translateY(-14px); }
+  .card .corner{ position:absolute; top:3px; left:5px; font-size:0.5em; line-height:1em; }
+
+  #trumpCard{ display:flex; flex-direction:column; align-items:center; gap:4px; }
+
+  #table{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    display:flex; flex-wrap:wrap; gap:14px; justify-content:center; align-items:center;
+    width:60%; min-height:160px;
+  }
+  .pair{ position:relative; width:64px; height:92px; }
+  .pair .attack{ position:absolute; top:0; left:0; }
+  .pair .defense{ position:absolute; top:14px; left:16px; }
+
+  .opponent{
+    position:absolute; display:flex; flex-direction:column; align-items:center; gap:4px; z-index:6;
+  }
+  .opponent .cards{ display:flex; }
+  .opponent .cards .card.small{ margin-left:-26px; }
+  .opponent .cards .card.small:first-child{ margin-left:0; }
+  .opponent .name{
+    font-size:0.8em; background:rgba(0,0,0,0.4); padding:2px 10px; border-radius:12px;
+  }
+  .opponent .name.active{ background:var(--gold); color:#3a2a00; font-weight:700; }
+  .opponent .status{ font-size:0.72em; background:rgba(0,0,0,0.5); padding:2px 8px; border-radius:10px; color:var(--gold);}
+
+  #opp-top{ top:14px; left:50%; transform:translateX(-50%); }
+  #opp-left{ left:14px; top:50%; transform:translateY(-50%); flex-direction:row-reverse;}
+  #opp-left .cards{ flex-direction:column; }
+  #opp-left .cards .card.small{ margin-left:0; margin-top:-46px; }
+  #opp-left .cards .card.small:first-child{ margin-top:0; }
+  #opp-right{ right:14px; top:50%; transform:translateY(-50%); }
+  #opp-right .cards{ flex-direction:column; }
+  #opp-right .cards .card.small{ margin-left:0; margin-top:-46px; }
+  #opp-right .cards .card.small:first-child{ margin-top:0; }
+
+  #hand{
+    position:absolute; bottom:10px; left:50%; transform:translateX(-50%);
+    display:flex; gap:-10px; z-index:20;
+  }
+  #hand .card{ margin-left:-18px; }
+  #hand .card:first-child{ margin-left:0; }
+  #youName{
+    position:absolute; bottom:118px; left:50%; transform:translateX(-50%);
+    font-size:0.85em; background:rgba(0,0,0,0.4); padding:2px 12px; border-radius:12px; z-index:20;
+  }
+  #youName.active{ background:var(--gold); color:#3a2a00; font-weight:700; }
+
+  #actions{
+    position:absolute; bottom:10px; right:20px; display:flex; flex-direction:column; gap:10px; z-index:30;
+  }
+  #actions button{ font-size:1.1em; padding:14px 22px; border-radius:14px; }
+
+  #overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.7); display:none;
+    align-items:center; justify-content:center; z-index:100; flex-direction:column; gap:16px;
+  }
+  #overlay .box{ background:#222; padding:30px 40px; border-radius:16px; text-align:center; }
+
+  #waitingBanner{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    background:rgba(0,0,0,0.5); padding:10px 20px; border-radius:10px; font-size:0.9em; z-index:4;
+    display:none;
+  }
+</style>
 </head>
 <body>
-<div id="game-container">
 
-    <div class="top-navbar">
-        <div class="nav-left">
-            <span>♠ Карточная игра «Дурак»</span>
-            <span id="room-code-display" class="room-badge">КОМНАТА: <span id="r-code-val"></span></span>
-        </div>
-        <div class="nav-right" onclick="toggleMusic()" title="Включить/выключить музыку">
-            🎵 <span id="music-label">Звук</span>
-        </div>
+<!-- ============================ МЕНЮ ============================ -->
+<div id="menu">
+  <h1>🂡 ДУРАК</h1>
+
+  <div class="menu-card">
+    <label>Ваше имя</label>
+    <input type="text" id="playerName" placeholder="Игрок" value="Игрок">
+    <hr class="sep">
+    <label>Количество игроков</label>
+    <select id="numPlayers">
+      <option value="2">2 игрока</option>
+      <option value="3">3 игрока</option>
+      <option value="4">4 игрока</option>
+    </select>
+    <div class="row">
+      <button class="btn-primary" id="btnPlayBots" style="flex:1">Играть с ботами</button>
     </div>
-
-    <div id="main-menu">
-        <div class="menu-modal">
-            <div class="menu-title">С кем будете играть?</div>
-
-            <div class="players-select-box">
-                <div class="p-opt active" onclick="setCount(2)">
-                    <div class="p-opt-icon">2</div>
-                    <div class="p-opt-lbl">Вдвоем</div>
-                </div>
-                <div class="p-opt" onclick="setCount(3)">
-                    <div class="p-opt-icon">3</div>
-                    <div class="p-opt-lbl">Втроем</div>
-                </div>
-                <div class="p-opt" onclick="setCount(4)">
-                    <div class="p-opt-icon">4</div>
-                    <div class="p-opt-lbl">Вчетвером</div>
-                </div>
-            </div>
-
-            <button class="btn-start" onclick="playWithBots()">🤖 Играть с ботами</button>
-            <button class="btn-start" onclick="createRoom()">✨ Создать комнату</button>
-
-            <div class="menu-divider"></div>
-
-            <div class="room-join-row">
-                <input id="room-code" class="room-input" maxlength="6" placeholder="КОД КОМНАТЫ" autocomplete="off">
-                <button class="btn-start" style="width:auto;" onclick="joinRoom()">Войти</button>
-            </div>
-
-            <div id="lobby-status" class="rematch-status">Ожидание начала игры...</div>
-        </div>
+    <hr class="sep">
+    <button class="btn-secondary" id="btnCreateRoom">Создать комнату</button>
+    <div class="row">
+      <input type="text" id="joinCode" placeholder="Код комнаты" style="flex:1">
+      <button class="btn-secondary" id="btnJoinRoom">Войти</button>
     </div>
+    <div id="menuError" style="color:#ffb3b3; font-size:0.85em;"></div>
+  </div>
 
-    <div id="game-over-modal">
-        <div class="modal-card">
-            <div id="go-title" class="modal-title">Игра окончена</div>
-            <div id="go-desc" class="modal-subtitle">Результат партии</div>
-            <button id="btn-rematch" class="btn-rematch" onclick="voteRematch()">ИГРАТЬ СНОВА (РЕВАНШ)</button>
-            <div id="rematch-counter" class="rematch-status"></div>
-        </div>
-    </div>
+  <div class="menu-card" id="lobbyBox" style="display:none;">
+    <div>Код комнаты: <b id="lobbyCode"></b></div>
+    <div id="lobbyPlayers"></div>
+    <button class="btn-primary" id="btnStartNow" style="display:none;">Начать игру сейчас</button>
+  </div>
+</div>
 
-    <div id="seat-top" class="seat seat-top"></div>
-    <div id="seat-left" class="seat seat-left"></div>
-    <div id="seat-right" class="seat seat-right"></div>
+<!-- ============================ ИГРА ============================ -->
+<div id="game">
+  <div id="topbar"></div>
+  <div id="logbox"></div>
 
-    <div id="deck-area">
-        <div id="trump-under" class="trump-card-under"></div>
-        <div id="deck-top-card" class="deck-top-css"></div>
-        <div id="deck-counter" class="deck-counter-badge">0</div>
-    </div>
+  <div id="deckArea">
+    <div id="trumpCard"></div>
+    <div class="card back" id="deckPile"></div>
+    <div id="deckCount"></div>
+  </div>
 
-    <div id="table-area"></div>
+  <div id="opp-top" class="opponent"></div>
+  <div id="opp-left" class="opponent"></div>
+  <div id="opp-right" class="opponent"></div>
 
-    <div id="player-area">
-        <div id="msg-box">Ожидание игры...</div>
-        <div class="action-bar">
-            <button id="btn-take" class="action-btn btn-take" onclick="sendAction('take')">БЕРУ</button>
-            <button id="btn-done" class="action-btn btn-done" onclick="sendAction('done')">БИТО</button>
-            <button id="btn-pass" class="action-btn btn-pass" onclick="sendAction('pass')">ПАС</button>
-        </div>
-        <div id="my-cards-container" class="my-hand"></div>
-    </div>
+  <div id="table"></div>
+  <div id="waitingBanner"></div>
 
+  <div id="youName"></div>
+  <div id="hand"></div>
+
+  <div id="actions"></div>
+</div>
+
+<div id="overlay">
+  <div class="box">
+    <h2 id="overlayTitle"></h2>
+    <button class="btn-primary" onclick="location.reload()">Играть снова</button>
+  </div>
 </div>
 
 <script>
-    const socket = io();
+const socket = io();
+let myIdx = null;
+let currentState = null;
 
-    let selectedMaxPlayers = 2;
-    let currentRoomCode = null;
-    let gameState = null;
+const menu = document.getElementById('menu');
+const gameEl = document.getElementById('game');
+const lobbyBox = document.getElementById('lobbyBox');
 
-    const bgMusic = new Audio('./theme.mp3');
-    bgMusic.loop = true;
-    let musicOn = false;
+document.getElementById('btnPlayBots').onclick = () => {
+  const numPlayers = parseInt(document.getElementById('numPlayers').value, 10);
+  const name = document.getElementById('playerName').value || 'Игрок';
+  socket.emit('createLocalGame', { numPlayers, name });
+};
 
-    function toggleMusic() {
-        musicOn = !musicOn;
-        const label = document.getElementById('music-label');
+document.getElementById('btnCreateRoom').onclick = () => {
+  const numPlayers = parseInt(document.getElementById('numPlayers').value, 10);
+  const name = document.getElementById('playerName').value || 'Игрок';
+  socket.emit('createRoom', { numPlayers, name });
+};
 
-        if (musicOn) {
-            bgMusic.play().catch(() => {});
-            if (label) label.innerText = 'Звук: ВКЛ';
-        } else {
-            bgMusic.pause();
-            if (label) label.innerText = 'Звук: ВЫКЛ';
-        }
+document.getElementById('btnJoinRoom').onclick = () => {
+  const code = document.getElementById('joinCode').value.trim();
+  const name = document.getElementById('playerName').value || 'Игрок';
+  if (!code) return;
+  socket.emit('joinRoom', { code, name });
+};
+
+document.getElementById('btnStartNow').onclick = () => {
+  socket.emit('startRoomNow');
+};
+
+socket.on('errorMsg', (msg) => {
+  document.getElementById('menuError').textContent = msg;
+});
+
+socket.on('roomCreated', ({ code }) => {
+  lobbyBox.style.display = 'flex';
+  document.getElementById('lobbyCode').textContent = code;
+  document.getElementById('btnStartNow').style.display = 'inline-block';
+});
+
+socket.on('lobby', (data) => {
+  lobbyBox.style.display = 'flex';
+  document.getElementById('lobbyCode').textContent = data.code;
+  document.getElementById('lobbyPlayers').innerHTML =
+    'Игроки (' + data.players.length + '/' + data.numPlayers + '): ' + data.players.join(', ');
+  document.getElementById('btnStartNow').style.display = data.isHost ? 'inline-block' : 'none';
+});
+
+socket.on('state', (state) => {
+  currentState = state;
+  myIdx = state.yourIdx;
+  menu.style.display = 'none';
+  gameEl.style.display = 'block';
+  render(state);
+  if (state.status === 'finished') {
+    document.getElementById('overlay').style.display = 'flex';
+    document.getElementById('overlayTitle').textContent =
+      state.loser ? ('Игра окончена! Дурак: ' + state.loser) : 'Игра окончена вничью!';
+  }
+});
+
+// -------------------- Рендер карт --------------------
+function suitColor(suit){ return (suit === '♥' || suit === '♦') ? 'red' : ''; }
+
+function cardEl(card, opts={}){
+  const div = document.createElement('div');
+  div.className = 'card ' + suitColor(card.suit) + (opts.small ? ' small' : '') + (opts.playable ? ' playable' : '');
+  div.innerHTML = `<div>${card.rank}</div><div>${card.suit}</div>`;
+  if (opts.onClick) div.onclick = opts.onClick;
+  return div;
+}
+
+function backCardEl(small=true){
+  const div = document.createElement('div');
+  div.className = 'card back' + (small ? ' small' : '');
+  return div;
+}
+
+function render(state){
+  // topbar
+  document.getElementById('topbar').textContent =
+    'Комната: ' + state.code + '   |   Козырь: ' + state.trumpSuit + '   |   В колоде: ' + state.deckCount;
+
+  document.getElementById('logbox').innerHTML = state.log.map(l => '<div>' + l + '</div>').join('');
+
+  // deck / trump
+  const trumpBox = document.getElementById('trumpCard');
+  trumpBox.innerHTML = '';
+  if (state.trumpCard) trumpBox.appendChild(cardEl(state.trumpCard, { small:true }));
+  document.getElementById('deckCount').textContent = state.deckCount + ' карт';
+  document.getElementById('deckPile').style.display = state.deckCount > 0 ? 'block' : 'none';
+
+  // opponents seating: everyone except me, in order starting from next after me
+  const n = state.players.length;
+  const others = [];
+  for (let k = 1; k < n; k++) others.push(state.players[(myIdx + k) % n]);
+
+  const slots = ['opp-left','opp-top','opp-right'];
+  // choose slot mapping depending on number of opponents
+  let slotOrder;
+  if (others.length === 1) slotOrder = ['opp-top'];
+  else if (others.length === 2) slotOrder = ['opp-left','opp-right'];
+  else slotOrder = ['opp-left','opp-top','opp-right'];
+
+  slots.forEach(s => { document.getElementById(s).innerHTML = ''; document.getElementById(s).style.display='none'; });
+
+  others.forEach((p, i) => {
+    const slotId = slotOrder[i];
+    if (!slotId) return;
+    const el = document.getElementById(slotId);
+    el.style.display = 'flex';
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'name' + ((p.isAttacker || p.isDefender) ? ' active' : '');
+    nameDiv.textContent = p.name + (p.isAttacker ? ' (атакует)' : p.isDefender ? ' (защита)' : '');
+    const cardsDiv = document.createElement('div');
+    cardsDiv.className = 'cards';
+    for (let c = 0; c < p.handCount; c++) cardsDiv.appendChild(backCardEl(true));
+    const statusDiv = document.createElement('div');
+    statusDiv.className = 'status';
+    if (!p.connected) statusDiv.textContent = 'отключен';
+    else if (state.awaiting && state.awaiting.playerIdx === p.idx) {
+      statusDiv.textContent = state.awaiting.type === 'defend' ? 'защищается...' :
+        state.awaiting.type === 'attack' ? 'ходит...' :
+        state.awaiting.type === 'bito' ? 'решает...' : 'думает...';
+    } else statusDiv.textContent = '';
+    el.appendChild(nameDiv);
+    el.appendChild(cardsDiv);
+    if (statusDiv.textContent) el.appendChild(statusDiv);
+  });
+
+  // table
+  const tableEl = document.getElementById('table');
+  tableEl.innerHTML = '';
+  state.table.forEach(pair => {
+    const pd = document.createElement('div');
+    pd.className = 'pair';
+    const a = cardEl(pair.attack);
+    a.classList.add('attack');
+    pd.appendChild(a);
+    if (pair.defense) {
+      const d = cardEl(pair.defense);
+      d.classList.add('defense');
+      pd.appendChild(d);
     }
+    tableEl.appendChild(pd);
+  });
 
-    function setCount(num) {
-        selectedMaxPlayers = num;
-        document.querySelectorAll('.p-opt').forEach((el, idx) => {
-            el.classList.toggle('active', idx + 2 === num);
-        });
+  // your name / status
+  const me = state.players[myIdx];
+  const youName = document.getElementById('youName');
+  youName.textContent = me.name + (me.isAttacker ? ' (вы атакуете)' : me.isDefender ? ' (вы защищаетесь)' : '');
+  youName.className = (me.isAttacker || me.isDefender) ? 'active' : '';
+
+  // hand
+  const handEl = document.getElementById('hand');
+  handEl.innerHTML = '';
+  const awaiting = state.awaiting;
+  const iAmAwaited = awaiting && awaiting.playerIdx === myIdx;
+
+  let playableIds = new Set();
+  if (iAmAwaited) {
+    if (awaiting.type === 'attack') {
+      state.yourHand.forEach(c => playableIds.add(c.id));
+    } else if (awaiting.type === 'throw') {
+      const ranks = new Set();
+      state.table.forEach(p => { ranks.add(p.attack.rank); if (p.defense) ranks.add(p.defense.rank); });
+      state.yourHand.forEach(c => { if (ranks.has(c.rank)) playableIds.add(c.id); });
+    } else if (awaiting.type === 'defend') {
+      const pending = state.table[state.table.length - 1];
+      state.yourHand.forEach(c => {
+        const beats = (c.suit === pending.attack.suit && c.value > pending.attack.value) ||
+                      (c.suit === state.trumpSuit && pending.attack.suit !== state.trumpSuit);
+        if (beats) playableIds.add(c.id);
+      });
     }
+  }
 
-    function playWithBots() {
-        socket.emit('play_with_bots', selectedMaxPlayers);
-    }
-
-    function createRoom() {
-        socket.emit('create_room', selectedMaxPlayers);
-    }
-
-    function joinRoom() {
-        const input = document.getElementById('room-code');
-        const code = input.value.trim().toUpperCase();
-
-        if (code) {
-            currentRoomCode = code;
-            socket.emit('join_room', code);
-        }
-    }
-
-    function showRoomCode(code) {
-        const display = document.getElementById('room-code-display');
-        const value = document.getElementById('r-code-val');
-
-        if (display && value && code && !code.startsWith('BOTS_')) {
-            value.innerText = code;
-            display.style.display = 'inline';
-        }
-    }
-
-    socket.on('room_created', (data) => {
-        currentRoomCode = data.code;
-        showRoomCode(data.code);
-        document.getElementById('lobby-status').innerText =
-            `Комната создана. Игроков: 1 / ${data.maxPlayers}`;
-        document.getElementById('main-menu').style.display = 'flex';
+  state.yourHand.forEach(c => {
+    const playable = playableIds.has(c.id);
+    const el = cardEl(c, {
+      playable,
+      onClick: playable ? () => onCardClick(awaiting.type, c.id) : null
     });
+    handEl.appendChild(el);
+  });
 
-    socket.on('lobby_update', (data) => {
-        currentRoomCode = data.code;
-        showRoomCode(data.code);
-
-        document.getElementById('main-menu').style.display = 'flex';
-        document.getElementById('lobby-status').innerText =
-            `Ожидание игроков: ${data.current} / ${data.max}`;
-    });
-
-    socket.on('game_update', (state) => {
-        document.getElementById('main-menu').style.display = 'none';
-        document.getElementById('deck-area').style.display = 'flex';
-
-        gameState = state;
-
-        if (state.roomCode) {
-            currentRoomCode = state.roomCode;
-            showRoomCode(state.roomCode);
-        }
-
-        render();
-    });
-
-    socket.on('error_msg', (msg) => {
-        alert(msg);
-    });
-
-    socket.on('opponent_disconnected', () => {
-        alert('Соперник отключился. Комната закрыта.');
-        location.reload();
-    });
-
-    socket.on('game_over', (data) => {
-        const titleEl = document.getElementById('go-title');
-        const descEl = document.getElementById('go-desc');
-
-        if (data.winner === socket.id) {
-            titleEl.innerText = 'ПОБЕДА!';
-            descEl.innerText = 'Вы выиграли эту партию!';
-        } else if (data.winner) {
-            titleEl.innerText = 'ПОРАЖЕНИЕ';
-            descEl.innerText = 'Вы остались в дураках...';
-        } else {
-            titleEl.innerText = 'НИЧЬЯ';
-            descEl.innerText = 'Партия закончилась вничью.';
-        }
-
-        const btn = document.getElementById('btn-rematch');
-        btn.disabled = false;
-        btn.style.opacity = '1';
-
-        document.getElementById('game-over-modal').style.display = 'flex';
-    });
-
-    socket.on('rematch_timer', (timeLeft) => {
-        document.getElementById('rematch-counter').innerText =
-            `Авто-выход через: ${timeLeft}с`;
-    });
-
-    socket.on('rematch_voted', (data) => {
-        document.getElementById('rematch-counter').innerText =
-            `Голосов за реванш: ${data.votesCount} / ${data.totalNeeded}`;
-    });
-
-    socket.on('game_restarted', () => {
-        document.getElementById('game-over-modal').style.display = 'none';
-
-        const btn = document.getElementById('btn-rematch');
-        btn.disabled = false;
-        btn.style.opacity = '1';
-    });
-
-    socket.on('room_expired', () => {
-        alert('Время реванша истекло. Комната закрыта.');
-        location.reload();
-    });
-
-    function voteRematch() {
-        const rCode = currentRoomCode || (gameState && gameState.roomCode);
-        if (!rCode) return;
-
-        socket.emit('vote_rematch', rCode);
-
-        const btn = document.getElementById('btn-rematch');
-        btn.disabled = true;
-        btn.style.opacity = '0.5';
-
-        document.getElementById('rematch-counter').innerText =
-            'Вы проголосовали! Ожидание остальных...';
+  // actions
+  const actions = document.getElementById('actions');
+  actions.innerHTML = '';
+  if (iAmAwaited) {
+    if (awaiting.type === 'defend') {
+      const btn = document.createElement('button');
+      btn.className = 'btn-danger';
+      btn.textContent = 'БЕРУ';
+      btn.onclick = () => socket.emit('takeCards');
+      actions.appendChild(btn);
+    } else if (awaiting.type === 'throw') {
+      const btn = document.createElement('button');
+      btn.className = 'btn-blue';
+      btn.textContent = 'ПАС';
+      btn.onclick = () => socket.emit('pass');
+      actions.appendChild(btn);
+    } else if (awaiting.type === 'bito') {
+      const btn = document.createElement('button');
+      btn.className = 'btn-yellow';
+      btn.textContent = 'БИТО';
+      btn.onclick = () => socket.emit('bito');
+      actions.appendChild(btn);
     }
+  }
+}
 
-    function renderCardHTML(card) {
-        if (!card || !card.rank || !card.suit) return '';
-
-        const isRed = card.suit === '♥' || card.suit === '♦';
-        const colorClass = isRed ? 'red' : 'black';
-
-        return `
-            <div class="card-css ${colorClass}">
-                <div class="card-corner">
-                    <span>${escapeHTML(card.rank)}</span>
-                    <span>${escapeHTML(card.suit)}</span>
-                </div>
-                <div class="card-center-suit">${escapeHTML(card.suit)}</div>
-            </div>
-        `;
-    }
-
-    function escapeHTML(value) {
-        return String(value)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
-    }
-
-    function getTableRanks(table) {
-        const ranks = new Set();
-
-        for (const pair of table) {
-            if (pair.attack) ranks.add(pair.attack.rank);
-            if (pair.defense) ranks.add(pair.defense.rank);
-        }
-
-        return ranks;
-    }
-
-    function render() {
-        if (!gameState) return;
-
-        const myId = socket.id;
-        const pInfo = gameState.playersInfo || [];
-        const myIdx = pInfo.findIndex(p => p.id === myId);
-
-        if (myIdx === -1) return;
-
-        const seats = ['seat-top', 'seat-left', 'seat-right'];
-
-        seats.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) {
-                el.style.display = 'none';
-                el.innerHTML = '';
-            }
-        });
-
-        let seatMap = [];
-
-        if (pInfo.length === 2) {
-            seatMap = ['seat-top'];
-        } else if (pInfo.length === 3) {
-            seatMap = ['seat-left', 'seat-right'];
-        } else if (pInfo.length === 4) {
-            seatMap = ['seat-left', 'seat-top', 'seat-right'];
-        }
-
-        let offsetIdx = 0;
-
-        for (let i = 1; i < pInfo.length; i++) {
-            const targetPlayerIdx = (myIdx + i) % pInfo.length;
-            const p = pInfo[targetPlayerIdx];
-            const seatEl = document.getElementById(seatMap[offsetIdx++]);
-
-            if (!seatEl) continue;
-
-            const cardCount =
-                gameState.hands && gameState.hands[p.id]
-                    ? gameState.hands[p.id].length
-                    : 0;
-
-            const isDef = gameState.defenderIdx === targetPlayerIdx;
-            const isCurrentTurn =
-                gameState.currentThrowerIdx === targetPlayerIdx;
-
-            let bubbleText = '';
-            let bubbleClass = 'speech-bubble';
-
-            if (isDef) {
-                bubbleText = 'Кроюсь';
-            } else if (
-                isCurrentTurn &&
-                gameState.table &&
-                gameState.table.length > 0
-            ) {
-                bubbleText = 'Подкидывает...';
-                bubbleClass += ' turn';
-            } else if (
-                gameState.attackerIdx === targetPlayerIdx &&
-                (!gameState.table || gameState.table.length === 0)
-            ) {
-                bubbleText = 'Ходит';
-            }
-
-            const bubbleHTML = bubbleText
-                ? `<div class="${bubbleClass}">${escapeHTML(bubbleText)}</div>`
-                : '';
-
-            const backCardsHTML = Array(cardCount)
-                .fill(0)
-                .map(() => '<div class="card-back-css"></div>')
-                .join('');
-
-            const avatarSeed = encodeURIComponent(p.id);
-
-            seatEl.innerHTML = `
-                <div class="player-profile">
-                    ${bubbleHTML}
-                    <div class="avatar">
-                        <img src="https://api.dicebear.com/9.x/identicon/svg?seed=${avatarSeed}" alt="">
-                    </div>
-                    <div class="p-name">${escapeHTML(p.name || 'Игрок')}</div>
-                </div>
-                <div class="opp-hand">${backCardsHTML}</div>
-            `;
-
-            seatEl.style.display = 'flex';
-        }
-
-        const deckCounter = document.getElementById('deck-counter');
-
-        if (deckCounter) {
-            deckCounter.innerText = (gameState.deck || []).length;
-        }
-
-        const trumpUnder = document.getElementById('trump-under');
-
-        if (trumpUnder) {
-            if (gameState.trumpCard && gameState.trumpCard.rank) {
-                trumpUnder.innerHTML = renderCardHTML(gameState.trumpCard);
-                trumpUnder.style.display = 'block';
-            } else {
-                trumpUnder.innerHTML = '';
-                trumpUnder.style.display = 'none';
-            }
-        }
-
-        const topCard = document.getElementById('deck-top-card');
-
-        if (topCard) {
-            topCard.style.display =
-                !gameState.deck || gameState.deck.length === 0
-                    ? 'none'
-                    : 'block';
-        }
-
-        const tableArea = document.getElementById('table-area');
-
-        if (tableArea) {
-            if (!gameState.table || gameState.table.length === 0) {
-                tableArea.innerHTML = '';
-            } else {
-                tableArea.innerHTML = gameState.table
-                    .map(pair => `
-                        <div class="table-pair">
-                            ${renderCardHTML(pair.attack)}
-                            ${pair.defense ? renderCardHTML(pair.defense) : ''}
-                        </div>
-                    `)
-                    .join('');
-            }
-        }
-
-        const myHand =
-            gameState.hands && gameState.hands[myId]
-                ? gameState.hands[myId]
-                : [];
-
-        const myCardsEl =
-            document.getElementById('my-cards-container');
-
-        if (myCardsEl) {
-            myCardsEl.innerHTML = myHand
-                .map((card, idx) => `
-                    <div class="my-card-wrap" onclick="playCard(${idx})">
-                        ${renderCardHTML(card)}
-                    </div>
-                `)
-                .join('');
-        }
-
-        const isDefMe = gameState.defenderIdx === myIdx;
-        const isAttMe = gameState.attackerIdx === myIdx;
-        const isMyThrowTurn = gameState.currentThrowerIdx === myIdx;
-
-        const msg = document.getElementById('msg-box');
-        const table = gameState.table || [];
-        const tableRanks = getTableRanks(table);
-        const hasCardsToThrow =
-            myHand.some(card => tableRanks.has(card.rank));
-
-        if (msg) {
-            if (isDefMe) {
-                msg.innerText =
-                    'Вы защищаетесь! Кликните карту, чтобы побить.';
-                msg.style.color = '#e74c3c';
-            } else if (table.length > 0) {
-                if (isMyThrowTurn) {
-                    msg.innerText =
-                        'Ваша очередь подкидывать! Походите или нажмите ПАС / БИТО.';
-                    msg.style.color = '#f1c40f';
-                } else if (hasCardsToThrow) {
-                    msg.innerText =
-                        'У вас есть подходящие карты для подкидывания (ожидайте очереди).';
-                    msg.style.color = '#f1c40f';
-                } else {
-                    msg.innerText =
-                        'Стол занят (ход других игроков)...';
-                    msg.style.color = '#a0b5a8';
-                }
-            } else if (isAttMe) {
-                msg.innerText =
-                    'Ваш первый ход! Кликните любую карту.';
-                msg.style.color = '#f1c40f';
-            } else {
-                msg.innerText = 'Ход соперника...';
-                msg.style.color = '#a0b5a8';
-            }
-        }
-
-        const allCovered =
-            table.length > 0 &&
-            table.every(pair => pair.defense !== null);
-
-        const btnTake = document.getElementById('btn-take');
-        const btnDone = document.getElementById('btn-done');
-        const btnPass = document.getElementById('btn-pass');
-
-        btnTake.style.display =
-            isDefMe && table.length > 0 ? 'block' : 'none';
-
-        btnDone.style.display =
-            !isDefMe && table.length > 0 && allCovered
-                ? 'block'
-                : 'none';
-
-        btnPass.style.display =
-            !isDefMe && table.length > 0 && isMyThrowTurn
-                ? 'block'
-                : 'none';
-    }
-
-    function playCard(idx) {
-        const rCode = currentRoomCode || (gameState && gameState.roomCode);
-        if (!rCode) return;
-
-        socket.emit('player_action', {
-            roomCode: rCode,
-            action: 'play_card',
-            cardIdx: idx
-        });
-    }
-
-    function sendAction(action) {
-        const rCode = currentRoomCode || (gameState && gameState.roomCode);
-        if (!rCode) return;
-
-        socket.emit('player_action', {
-            roomCode: rCode,
-            action
-        });
-    }
-
-    document.getElementById('room-code').addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') joinRoom();
-    });
+function onCardClick(type, cardId){
+  if (type === 'attack' || type === 'throw') {
+    socket.emit('playCard', { cardId });
+  } else if (type === 'defend') {
+    socket.emit('defendCard', { cardId });
+  }
+}
 </script>
 </body>
 </html>

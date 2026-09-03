@@ -111,7 +111,7 @@ io.on('connection', (socket) => {
     socket.on('player_action', ({ roomCode, action, cardIdx }) => {
         let room = rooms[roomCode];
         if (!room) { socket.emit('error_msg', 'Комната не найдена'); return; }
-        if (!room.state || room.state.isGameOver) return;
+        if (!room.state || !room.state.isGameOver) return;
         let humanP = room.players.find(p => p.id === socket.id);
         if (!humanP) return;
         
@@ -119,6 +119,7 @@ io.on('connection', (socket) => {
         if (action === 'play_card') success = handlePlayCard(room, socket.id, cardIdx);
         else if (action === 'take') success = handleTake(room, socket.id);
         else if (action === 'done') success = handleDone(room, socket.id);
+        else if (action === 'pass') success = handlePass(room, socket.id);
         
         if (success) scheduleBotTurn(room);
     });
@@ -254,6 +255,16 @@ function handlePlayCard(room, pId, cardIdx) {
     }
 }
 
+function handlePass(room, pId) {
+    let state = room.state;
+    let pIdx = state.playersInfo.findIndex(p => p.id === pId);
+    if (pIdx === -1 || state.currentThrowerIdx !== pIdx) return false;
+    state.currentThrowerIdx = (state.currentThrowerIdx + 1) % state.playersInfo.length;
+    broadcastState(room);
+    scheduleBotTurn(room);
+    return true;
+}
+
 function handleTake(room, pId) {
     let state = room.state;
     let defenderId = state.playersInfo[state.defenderIdx].id;
@@ -333,7 +344,7 @@ function executeBotTurnChain(room) {
     let defP = state.playersInfo[state.defenderIdx];
     let uncoveredIdx = state.table.findIndex(p => p.defense === null);
     const hasCards = (pId) => (state.hands[pId] || []).length > 0;
-
+    
     if (uncoveredIdx !== -1) {
         if (defP && defP.isBot) {
             let attCard = state.table[uncoveredIdx].attack;
@@ -356,7 +367,7 @@ function executeBotTurnChain(room) {
         }
         return;
     }
-
+    
     if (state.table.length === 0) {
         let playerCount = state.playersInfo.length;
         let checkedCount = 0;
@@ -389,7 +400,7 @@ function executeBotTurnChain(room) {
         }
         return;
     }
-
+    
     if (state.table.length > 0 && uncoveredIdx === -1) {
         let playerCount = state.playersInfo.length;
         let checkedCount = 0;

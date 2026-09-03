@@ -111,10 +111,12 @@ io.on('connection', (socket) => {
     socket.on('player_action', ({ roomCode, action, cardIdx }) => {
         let room = rooms[roomCode];
         if (!room) { socket.emit('error_msg', 'Комната не найдена'); return; }
-        if (!room.state || !room.state.isGameOver) return;
+        if (!room.state || room.state.isGameOver) return;
         let humanP = room.players.find(p => p.id === socket.id);
         if (!humanP) return;
         
+        if (room.botLoopTimeout) clearTimeout(room.botLoopTimeout);
+
         let success = false;
         if (action === 'play_card') success = handlePlayCard(room, socket.id, cardIdx);
         else if (action === 'take') success = handleTake(room, socket.id);
@@ -335,7 +337,7 @@ function checkGameOver(room) {
 function scheduleBotTurn(room) {
     if (!room || !room.state || room.state.isGameOver) return;
     if (room.botLoopTimeout) clearTimeout(room.botLoopTimeout);
-    room.botLoopTimeout = setTimeout(() => { executeBotTurnChain(room); }, 1200);
+    room.botLoopTimeout = setTimeout(() => { executeBotTurnChain(room); }, 1000);
 }
 
 function executeBotTurnChain(room) {
@@ -344,7 +346,31 @@ function executeBotTurnChain(room) {
     let defP = state.playersInfo[state.defenderIdx];
     let uncoveredIdx = state.table.findIndex(p => p.defense === null);
     const hasCards = (pId) => (state.hands[pId] || []).length > 0;
-    
+
+    let curTh = state.playersInfo[state.currentThrowerIdx];
+    if (curTh && !curTh.isBot && hasCards(curTh.id)) {
+        if (state.table.length === 0) {
+            if (state.playersInfo[state.attackerIdx].id === curTh.id) {
+                broadcastState(room);
+                return;
+            }
+        } else if (uncoveredIdx === -1) {
+            let tRanks = getTableRanks(state.table);
+            let hand = state.hands[curTh.id] || [];
+            let hasValid = hand.some(c => tRanks.has(c.rank));
+            let defLen = (state.hands[defP.id] || []).length;
+            let canAdd = state.table.length < Math.min(6, defLen + countDefendedPairs(state.table));
+            if (hasValid && canAdd) {
+                broadcastState(room);
+                return;
+            } else {
+                state.currentThrowerIdx = (state.currentThrowerIdx + 1) % state.playersInfo.length;
+                scheduleBotTurn(room);
+                return;
+            }
+        }
+    }
+
     if (uncoveredIdx !== -1) {
         if (defP && defP.isBot) {
             let attCard = state.table[uncoveredIdx].attack;
@@ -367,7 +393,7 @@ function executeBotTurnChain(room) {
         }
         return;
     }
-    
+
     if (state.table.length === 0) {
         let playerCount = state.playersInfo.length;
         let checkedCount = 0;
@@ -381,6 +407,10 @@ function executeBotTurnChain(room) {
         }
         if (checkGameOver(room)) return;
         let attP = state.playersInfo[state.attackerIdx];
+        if (attP && !attP.isBot) {
+            broadcastState(room);
+            return;
+        }
         if (attP && attP.isBot && hasCards(attP.id)) {
             let botHand = state.hands[attP.id] || [];
             let nonTrumps = botHand.map((c, idx) => ({c, idx})).filter(o => o.c.suit !== state.trumpSuit);
@@ -391,16 +421,10 @@ function executeBotTurnChain(room) {
             }
             handlePlayCard(room, attP.id, targetIdx);
             scheduleBotTurn(room);
-        } else if (!attP.isBot && !hasCards(attP.id)) {
-            state.attackerIdx = (state.attackerIdx + 1) % playerCount;
-            state.defenderIdx = (state.attackerIdx + 1) % playerCount;
-            state.currentThrowerIdx = state.attackerIdx;
-            broadcastState(room);
-            scheduleBotTurn(room);
         }
         return;
     }
-    
+
     if (state.table.length > 0 && uncoveredIdx === -1) {
         let playerCount = state.playersInfo.length;
         let checkedCount = 0;
@@ -411,16 +435,13 @@ function executeBotTurnChain(room) {
                 checkedCount++;
                 continue;
             }
-            let hand = state.hands[curThrower.id] || [];
-            let tRanks = getTableRanks(state.table);
-            let defHandLen = (state.hands[defP.id] || []).length;
-            let canAddMore = state.table.length < Math.min(6, defHandLen + countDefendedPairs(state.table));
-            let hasValidCards = false;
-            if (canAddMore && hand.length > 0) {
-                hasValidCards = hand.some(c => tRanks.has(c.rank));
-            }
             if (!curThrower.isBot) {
-                if (hasValidCards) {
+                let hand = state.hands[curThrower.id] || [];
+                let tRanks = getTableRanks(state.table);
+                let hasValid = hand.some(c => tRanks.has(c.rank));
+                let defLen = (state.hands[defP.id] || []).length;
+                let canAdd = state.table.length < Math.min(6, defLen + countDefendedPairs(state.table));
+                if (hasValid && canAdd) {
                     broadcastState(room);
                     return;
                 } else {
@@ -429,18 +450,25 @@ function executeBotTurnChain(room) {
                     continue;
                 }
             }
-            if (curThrower.isBot && hasValidCards) {
-                let matchObj = hand.map((c, idx) => ({c, idx})).filter(o => tRanks.has(o.c.rank));
-                if (matchObj.length > 0) {
-                    matchObj.sort((a,b) => {
-                        let aTr = a.c.suit === state.trumpSuit ? 1 : 0;
-                        let bTr = b.c.suit === state.trumpSuit ? 1 : 0;
-                        if (aTr !== bTr) return aTr - bTr;
-                        return a.c.value - b.c.value;
-                    });
-                    handlePlayCard(room, curThrower.id, matchObj[0].idx);
-                    scheduleBotTurn(room);
-                    return;
+            if (curThrower.isBot) {
+                let hand = state.hands[curThrower.id] || [];
+                let tRanks = getTableRanks(state.table);
+                let defLen = (state.hands[defP.id] || []).length;
+                let canAdd = state.table.length < Math.min(6, defLen + countDefendedPairs(state.table));
+                let hasValid = canAdd && hand.some(c => tRanks.has(c.rank));
+                if (hasValid) {
+                    let matchObj = hand.map((c, idx) => ({c, idx})).filter(o => tRanks.has(o.c.rank));
+                    if (matchObj.length > 0) {
+                        matchObj.sort((a,b) => {
+                            let aTr = a.c.suit === state.trumpSuit ? 1 : 0;
+                            let bTr = b.c.suit === state.trumpSuit ? 1 : 0;
+                            if (aTr !== bTr) return aTr - bTr;
+                            return a.c.value - b.c.value;
+                        });
+                        handlePlayCard(room, curThrower.id, matchObj[0].idx);
+                        scheduleBotTurn(room);
+                        return;
+                    }
                 }
             }
             state.currentThrowerIdx = (state.currentThrowerIdx + 1) % playerCount;

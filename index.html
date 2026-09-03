@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Карточная игра «Дурак»</title>
-    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4/dist/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
 
@@ -66,7 +66,6 @@
         .room-join-row { display: flex; gap: 8px; width: 100%; }
         .room-input { flex: 1; background: #09100c; border: 1px solid #1c2b21; padding: 10px; border-radius: 6px; color: #fff; text-align: center; text-transform: uppercase; outline: none; }
 
-        /* ОКНО ОКОНЧАНИЯ ИГРЫ И РЕВАНША */
         #game-over-modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.8); display: none; flex-direction: column;
@@ -159,30 +158,6 @@
             <div class="nav-right"><span onclick="toggleMusic()">🎵 Звук</span></div>
         </div>
 
-        <div id="seat-top" class="seat seat-top" style="display:none;"></div>
-        <div id="seat-left" class="seat seat-left" style="display:none;"></div>
-        <div id="seat-right" class="seat seat-right" style="display:none;"></div>
-
-        <div id="deck-area" style="display:none;">
-            <div style="position: relative;">
-                <div id="trump-under" class="trump-card-under"></div>
-                <img id="deck-top-card" class="card-img-elem" src="https://deckofcardsapi.com/static/img/back.png" alt="Колода">
-                <div class="deck-counter-badge" id="deck-counter">0</div>
-            </div>
-        </div>
-
-        <div id="table-area"></div>
-
-        <div id="player-area">
-            <div id="msg-box">Ожидание начала игры...</div>
-            <div class="action-bar">
-                <button id="btn-take" class="action-btn btn-take" style="display:none;" onclick="sendAction('take')">БЕРУ</button>
-                <button id="btn-pass" class="action-btn btn-pass" style="display:none;" onclick="sendAction('pass')">ПАС</button>
-                <button id="btn-done" class="action-btn btn-done" style="display:none;" onclick="sendAction('done')">БИТО</button>
-            </div>
-            <div class="my-hand" id="my-cards-container"></div>
-        </div>
-
         <div id="main-menu">
             <div class="menu-modal">
                 <div class="menu-title">С кем будете играть?</div>
@@ -201,8 +176,8 @@
                     </div>
                 </div>
                 <button class="btn-start" onclick="playWithBots()">🤖 Играть с ботами</button>
-                <button class="btn-start" style="background:#2ecc71; color:#fff;" onclick="createRoom()">✨ Создать комнату</button>
                 <div class="menu-divider"></div>
+                <button class="btn-start" style="background:#2ecc71; color:#fff;" onclick="createRoom()">✨ Создать комнату</button>
                 <div class="room-join-row">
                     <input type="text" id="room-code" class="room-input" placeholder="Код комнаты" maxlength="6">
                     <button class="btn-start" style="width: auto; padding: 10px 20px;" onclick="joinRoom()">Войти</button>
@@ -212,11 +187,39 @@
 
         <div id="game-over-modal">
             <div class="modal-card">
-                <div class="modal-title" id="go-title">Игра окончена</div>
-                <div class="modal-subtitle" id="go-desc">Результат партии</div>
-                <button class="btn-rematch" id="btn-rematch" onclick="voteRematch()">ИГРАТЬ СНОВА (РЕВАНШ)</button>
-                <div class="rematch-status" id="rematch-counter">Ожидание игроков: 15с</div>
+                <div id="go-title" class="modal-title">Игра окончена</div>
+                <div id="go-desc" class="modal-subtitle">Результат партии</div>
+                <button id="btn-rematch" class="btn-rematch" onclick="voteRematch()">ИГРАТЬ СНОВА (РЕВАНШ)</button>
+                <div id="rematch-counter" class="rematch-status">Ожидание игроков: 15с</div>
             </div>
+        </div>
+
+        <!-- Seats for opponents -->
+        <div id="seat-top" class="seat seat-top" style="display:none;"></div>
+        <div id="seat-left" class="seat seat-left" style="display:none;"></div>
+        <div id="seat-right" class="seat seat-right" style="display:none;"></div>
+
+        <!-- Deck area -->
+        <div id="deck-area" style="display:none;">
+            <div style="position:relative;">
+                <div id="trump-under" class="trump-card-under"></div>
+                <img id="deck-top-card" class="card-img-elem" src="https://deckofcardsapi.com/static/img/back.png" alt="Колода">
+                <div id="deck-counter" class="deck-counter-badge">36</div>
+            </div>
+        </div>
+
+        <!-- Table area -->
+        <div id="table-area"></div>
+
+        <!-- Player area -->
+        <div id="player-area">
+            <div id="msg-box">Ожидание начала игры...</div>
+            <div class="action-bar">
+                <button id="btn-take" class="action-btn btn-take" style="display:none;" onclick="sendAction('take')">БЕРУ</button>
+                <button id="btn-pass" class="action-btn btn-pass" style="display:none;" onclick="sendAction('pass')">ПАС</button>
+                <button id="btn-done" class="action-btn btn-done" style="display:none;" onclick="sendAction('done')">БИТО</button>
+            </div>
+            <div id="my-cards-container" class="my-hand"></div>
         </div>
     </div>
 
@@ -243,7 +246,6 @@
 
         function playWithBots() { socket.emit('play_with_bots', selectedMaxPlayers); }
         function createRoom() { socket.emit('create_room', selectedMaxPlayers); }
-        
         function joinRoom() {
             let code = document.getElementById('room-code').value.trim().toUpperCase();
             if (code) { currentRoomCode = code; socket.emit('join_room', code); }
@@ -258,7 +260,6 @@
 
         socket.on('room_created', (data) => { currentRoomCode = data.code; showRoomCode(data.code); document.getElementById('main-menu').style.display='none'; });
         socket.on('lobby_update', (data) => { currentRoomCode = data.code; showRoomCode(data.code); document.getElementById('main-menu').style.display='none'; });
-        
         socket.on('game_update', (state) => {
             document.getElementById('main-menu').style.display = 'none';
             document.getElementById('deck-area').style.display = 'flex';
@@ -266,9 +267,7 @@
             if (state.roomCode) { currentRoomCode = state.roomCode; showRoomCode(state.roomCode); }
             render();
         });
-
         socket.on('error_msg', (msg) => { alert(msg); });
-        
         socket.on('game_over', (data) => {
             let titleEl = document.getElementById('go-title');
             let descEl = document.getElementById('go-desc');
@@ -286,27 +285,24 @@
             document.getElementById('btn-rematch').style.opacity = "1";
             document.getElementById('game-over-modal').style.display = 'flex';
         });
-
         socket.on('rematch_timer', (timeLeft) => {
             document.getElementById('rematch-counter').innerText = `Авто-выход через: ${timeLeft}с`;
         });
-        
         socket.on('rematch_voted', (data) => {
             document.getElementById('rematch-counter').innerText = `Голосов за реванш: ${data.votesCount} / ${data.totalNeeded}`;
         });
-        
         socket.on('game_restarted', () => {
             document.getElementById('game-over-modal').style.display = 'none';
         });
-        
         socket.on('room_expired', () => {
             alert("Время реванша истекло. Комната закрыта.");
             location.reload();
         });
 
         function voteRematch() {
-            if (!currentRoomCode) return;
-            socket.emit('vote_rematch', currentRoomCode);
+            let rCode = currentRoomCode || (gameState && gameState.roomCode);
+            if (!rCode) return;
+            socket.emit('vote_rematch', rCode);
             document.getElementById('btn-rematch').disabled = true;
             document.getElementById('btn-rematch').style.opacity = "0.5";
             document.getElementById('rematch-counter').innerText = "Вы проголосовали! Ожидание остальных...";
@@ -355,7 +351,7 @@
                 let cardCount = (gameState.hands && gameState.hands[p.id]) ? gameState.hands[p.id].length : 0;
                 let isDef = gameState.defenderIdx === targetPlayerIdx;
                 let isCurrentTurn = gameState.currentThrowerIdx === targetPlayerIdx;
-                
+
                 let bubbleText = "";
                 let bubbleClass = "speech-bubble";
                 if (isDef) {
@@ -368,16 +364,8 @@
                 }
 
                 let bubbleHTML = bubbleText ? `<div class="${bubbleClass}">${bubbleText}</div>` : '';
-                let backCardsHTML = Array(cardCount).fill(0).map(() => `<img class="card-img-back" src="https://deckofcardsapi.com/static/img/back.png">`).join('');
-                
-                seatEl.innerHTML = `
-                    <div class="player-profile">
-                        ${bubbleHTML}
-                        <div class="avatar"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${p.id}" alt=""></div>
-                        <div class="p-name">${p.name}</div>
-                    </div>
-                    <div class="opp-hand">${backCardsHTML}</div>
-                `;
+                let backCardsHTML = Array(cardCount).fill(0).map(() => `<img class="card-img-back" src="https://deckofcardsapi.com/static/img/back.png" alt="card">`).join('');
+                seatEl.innerHTML = `<div class="player-profile"> ${bubbleHTML} <div class="avatar"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${p.id}" alt=""></div> <div class="p-name">${p.name}</div> </div> <div class="opp-hand">${backCardsHTML}</div>`;
                 seatEl.style.display = 'flex';
             }
 
@@ -387,7 +375,7 @@
             let tu = document.getElementById('trump-under');
             if (tu) {
                 if (gameState.trumpCard && gameState.trumpCard.rank) {
-                    tu.innerHTML = `<img class="card-img-elem" src="${getCardImageUrl(gameState.trumpCard)}">`;
+                    tu.innerHTML = `<img class="card-img-elem" src="${getCardImageUrl(gameState.trumpCard)}" alt="trump">`;
                     tu.style.display = 'block';
                 } else { tu.style.display = 'none'; }
             }
@@ -406,23 +394,14 @@
                 if (!gameState.table || gameState.table.length === 0) {
                     tArea.innerHTML = '';
                 } else {
-                    tArea.innerHTML = gameState.table.map(p => `
-                        <div class="table-pair">
-                            <img class="card-img-elem" src="${getCardImageUrl(p.attack)}">
-                            ${p.defense ? `<img class="card-img-elem" src="${getCardImageUrl(p.defense)}">` : ''}
-                        </div>
-                    `).join('');
+                    tArea.innerHTML = gameState.table.map(p => `<div class="table-pair"> <img class="card-img-elem" src="${getCardImageUrl(p.attack)}" alt="attack"> ${p.defense ? `<img class="card-img-elem" src="${getCardImageUrl(p.defense)}" alt="defense" style="position:absolute; left:16px; top:12px; z-index:2;">` : ''} </div>`).join('');
                 }
             }
 
             let myHand = (gameState.hands && gameState.hands[myId]) ? gameState.hands[myId] : [];
             let myCardsEl = document.getElementById('my-cards-container');
             if (myCardsEl) {
-                myCardsEl.innerHTML = myHand.map((c, idx) => `
-                    <div class="my-card-wrap" data-card-idx="${idx}" onclick="playCard(${idx})">
-                        <img class="card-img-elem" src="${getCardImageUrl(c)}" style="pointer-events: none;">
-                    </div>
-                `).join('');
+                myCardsEl.innerHTML = myHand.map((c, idx) => `<div class="my-card-wrap" data-card-idx="${idx}" onclick="playCard(${idx})"> <img class="card-img-elem" src="${getCardImageUrl(c)}" style="pointer-events: none;" alt="mycard"> </div>`).join('');
             }
 
             let isDefMe = gameState.defenderIdx === myIdx;
@@ -460,20 +439,21 @@
             let btnTake = document.getElementById('btn-take');
             let btnDone = document.getElementById('btn-done');
             let btnPass = document.getElementById('btn-pass');
-            
-            btnTake.style.display = isDefMe && gameState.table && gameState.table.length > 0 ? 'block' : 'none';
-            btnDone.style.display = !isDefMe && gameState.table && gameState.table.length > 0 && allCovered ? 'block' : 'none';
-            btnPass.style.display = !isDefMe && gameState.table && gameState.table.length > 0 && isMyThrowTurn && hasCardsToThrow ? 'block' : 'none';
+            btnTake.style.display = (isDefMe && gameState.table && gameState.table.length > 0) ? 'block' : 'none';
+            btnDone.style.display = (!isDefMe && gameState.table && gameState.table.length > 0 && allCovered) ? 'block' : 'none';
+            btnPass.style.display = (!isDefMe && gameState.table && gameState.table.length > 0 && isMyThrowTurn && hasCardsToThrow) ? 'block' : 'none';
         }
 
         function playCard(idx) {
-            if (!currentRoomCode) return;
-            socket.emit('player_action', { roomCode: currentRoomCode, action: 'play_card', cardIdx: idx });
+            let rCode = currentRoomCode || (gameState && gameState.roomCode);
+            if (!rCode) return;
+            socket.emit('player_action', { roomCode: rCode, action: 'play_card', cardIdx: idx });
         }
 
         function sendAction(action) {
-            if (!currentRoomCode) return;
-            socket.emit('player_action', { roomCode: currentRoomCode, action });
+            let rCode = currentRoomCode || (gameState && gameState.roomCode);
+            if (!rCode) return;
+            socket.emit('player_action', { roomCode: rCode, action });
         }
     </script>
 </body>

@@ -84,7 +84,7 @@
         .opp-hand { display: flex; }
         .card-img-back {
             width: 24px; height: 35px; border-radius: 3px; margin-left: -12px;
-            box-shadow: -2px 2px 5px rgba(0,0,0,0.4); object-fit: cover; background: #2980b9; border: 1px solid #fff;
+            box-shadow: -2px 2px 5px rgba(0,0,0,0.4); object-fit: cover;
         }
         .opp-hand .card-img-back:first-child { margin-left: 0; }
         .seat-left .opp-hand, .seat-right .opp-hand { flex-direction: column; }
@@ -167,8 +167,8 @@
         <div id="player-area">
             <div id="msg-box">Ожидание начала игры...</div>
             <div class="action-bar">
-                <button id="btn-take" class="action-btn btn-take" onclick="sendAction('take')" disabled>БЕРУ</button>
-                <button id="btn-done" class="action-btn btn-done" onclick="sendAction('done')" disabled>БИТО</button>
+                <button id="btn-take" class="action-btn btn-take" onclick="sendAction('take')">БЕРУ</button>
+                <button id="btn-done" class="action-btn btn-done" onclick="sendAction('pass')">ПАС / БИТО</button>
             </div>
             <div id="my-cards-container" class="my-hand"></div>
         </div>
@@ -233,67 +233,75 @@
             let myIdx = pInfo.findIndex(p => p.id === myId);
             let seats = ['seat-top', 'seat-left', 'seat-right'];
             seats.forEach(s => document.getElementById(s).style.display = 'none');
-            
+
             let seatMap = [];
             if (pInfo.length === 2) seatMap = ['seat-top'];
             else if (pInfo.length === 3) seatMap = ['seat-left', 'seat-right'];
             else if (pInfo.length === 4) seatMap = ['seat-left', 'seat-top', 'seat-right'];
-            
+
             let offsetIdx = 0;
             for (let i = 1; i < pInfo.length; i++) {
                 let targetPlayerIdx = (myIdx + i) % pInfo.length;
                 let p = pInfo[targetPlayerIdx];
                 let seatEl = document.getElementById(seatMap[offsetIdx++]);
                 if (!seatEl) continue;
-                
+
                 let cardCount = (gameState.hands[p.id] || []).length;
                 let isAtt = gameState.attackerIdx === targetPlayerIdx;
                 let isDef = gameState.defenderIdx === targetPlayerIdx;
-                let bubbleText = isAtt ? "Хожу" : (isDef ? "Кроюсь" : "");
+                let isSubTurn = gameState.turnSubIdx === targetPlayerIdx && !isDef;
+                
+                let bubbleText = isAtt && gameState.table.length === 0 ? "Хожу" : (isDef ? "Кроюсь" : (isSubTurn ? "Подкидываю" : ""));
                 let bubbleHTML = bubbleText ? `<div class="speech-bubble">${bubbleText}</div>` : '';
-                let backCardsHTML = Array(cardCount).fill(0).map(() => `<div class="card-img-back"></div>`).join('');
+                let backCardsHTML = Array(cardCount).fill(0).map(() => `<img class="card-img-back" src="https://deckofcardsapi.com/static/img/back.png">`).join('');
                 
                 seatEl.innerHTML = `<div class="player-profile"> ${bubbleHTML} <div class="avatar"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${p.id}" alt=""></div> <div class="p-name">${p.name}</div> </div> <div class="opp-hand">${backCardsHTML}</div>`;
                 seatEl.style.display = 'flex';
             }
-            
+
             document.getElementById('deck-counter').innerText = gameState.deck.length;
             let tu = document.getElementById('trump-under');
             if (gameState.trumpCard && gameState.trumpCard.rank) {
                 tu.innerHTML = `<img class="card-img-elem" src="${getCardImageUrl(gameState.trumpCard)}">`;
                 tu.style.display = 'block';
             } else { tu.style.display = 'none'; }
-            
-            if(gameState.deck.length === 0) {
+
+            if (gameState.deck.length === 0) {
                 document.getElementById('deck-top-card').style.display = 'none';
             } else {
                 document.getElementById('deck-top-card').style.display = 'block';
             }
-            
+
             let tArea = document.getElementById('table-area');
             if (!gameState.table || gameState.table.length === 0) {
                 tArea.innerHTML = '';
             } else {
-                tArea.innerHTML = gameState.table.map(p => {
-                    let defImg = p.defense ? `<img class="card-img-elem" src="${getCardImageUrl(p.defense)}">` : '';
-                    return `<div class="table-pair"> <img class="card-img-elem" src="${getCardImageUrl(p.attack)}"> ${defImg} </div>`;
-                }).join('');
+                tArea.innerHTML = gameState.table.map(p => `<div class="table-pair"> <img class="card-img-elem" src="${getCardImageUrl(p.attack)}"> ${p.defense ? `<img class="card-img-elem" src="${getCardImageUrl(p.defense)}">` : ''} </div>`).join('');
             }
-            
+
             let myHand = gameState.hands[myId] || [];
             let myCardsEl = document.getElementById('my-cards-container');
             myCardsEl.innerHTML = myHand.map((c, idx) => `<div class="my-card-wrap" onclick="playCard(${idx})"><img class="card-img-elem" src="${getCardImageUrl(c)}"></div>`).join('');
-            
+
             let isDefMe = gameState.defenderIdx === myIdx;
-            let isAttMe = gameState.attackerIdx === myIdx;
+            let isMyTurnSub = gameState.turnSubIdx === myIdx && !isDefMe;
             let msg = document.getElementById('msg-box');
-            if (isDefMe) msg.innerText = "Вы защищаетесь!";
-            else if (isAttMe || gameState.table.length > 0) msg.innerText = "Ваш ход / Подкидывание";
-            else msg.innerText = "Ход соперника...";
-            
+
+            if (isDefMe) {
+                msg.innerText = "Вы защищаетесь!";
+            } else if (isMyTurnSub) {
+                msg.innerText = "Ваша очередь ходить / подкидывать!";
+            } else {
+                let currentSubPlayer = gameState.playersInfo[gameState.turnSubIdx];
+                msg.innerText = `Ходит / подкидывает: ${currentSubPlayer ? currentSubPlayer.name : '...'}`;
+            }
+
             let allCovered = gameState.table.length > 0 && gameState.table.every(p => p.defense !== null);
             document.getElementById('btn-take').disabled = !isDefMe || gameState.table.length === 0;
-            document.getElementById('btn-done').disabled = !isAttMe || gameState.table.length === 0 || !allCovered;
+
+            let canPass = gameState.table.length > 0 && !isDefMe;
+            document.getElementById('btn-done').disabled = !canPass;
+            document.getElementById('btn-done').innerText = allCovered ? "БИТО (Хватит)" : "ПАС";
         }
 
         function playCard(idx) { socket.emit('player_action', { roomCode: currentRoomCode, action: 'play_card', cardIdx: idx }); }

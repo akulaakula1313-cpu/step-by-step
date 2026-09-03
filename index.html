@@ -240,9 +240,14 @@
             let myId = socket.id;
             let pInfo = gameState.playersInfo || [];
             let myIdx = pInfo.findIndex(p => p.id === myId);
+            if (myIdx === -1) return;
+
             let seats = ['seat-top', 'seat-left', 'seat-right'];
-            seats.forEach(s => document.getElementById(s).style.display = 'none');
-            
+            seats.forEach(s => {
+                let el = document.getElementById(s);
+                if (el) el.style.display = 'none';
+            });
+
             let seatMap = [];
             if (pInfo.length === 2) seatMap = ['seat-top'];
             else if (pInfo.length === 3) seatMap = ['seat-left', 'seat-right'];
@@ -254,22 +259,22 @@
                 let p = pInfo[targetPlayerIdx];
                 let seatEl = document.getElementById(seatMap[offsetIdx++]);
                 if (!seatEl) continue;
-                
-                let cardCount = (gameState.hands[p.id] || []).length;
+
+                let cardCount = (gameState.hands && gameState.hands[p.id]) ? gameState.hands[p.id].length : 0;
                 let isDef = gameState.defenderIdx === targetPlayerIdx;
                 let isCurrentTurn = gameState.currentThrowerIdx === targetPlayerIdx;
-                
+
                 let bubbleText = "";
                 let bubbleClass = "speech-bubble";
                 if (isDef) {
                     bubbleText = "Кроюсь";
-                } else if (isCurrentTurn && gameState.table.length > 0) {
+                } else if (isCurrentTurn && gameState.table && gameState.table.length > 0) {
                     bubbleText = "Подкидывает...";
                     bubbleClass += " turn";
-                } else if (gameState.attackerIdx === targetPlayerIdx && gameState.table.length === 0) {
+                } else if (gameState.attackerIdx === targetPlayerIdx && (!gameState.table || gameState.table.length === 0)) {
                     bubbleText = "Ходит";
                 }
-                
+
                 let bubbleHTML = bubbleText ? `<div class="${bubbleClass}">${bubbleText}</div>` : '';
                 let backCardsHTML = Array(cardCount).fill(0).map(() => `<img class="card-img-back" src="https://deckofcardsapi.com/static/img/back.png">`).join('');
                 
@@ -277,66 +282,88 @@
                 seatEl.style.display = 'flex';
             }
 
-            document.getElementById('deck-counter').innerText = gameState.deck.length;
-            let tu = document.getElementById('trump-under');
-            if (gameState.trumpCard && gameState.trumpCard.rank) {
-                tu.innerHTML = `<img class="card-img-elem" src="${getCardImageUrl(gameState.trumpCard)}">`;
-                tu.style.display = 'block';
-            } else { tu.style.display = 'none'; }
+            let deckCounter = document.getElementById('deck-counter');
+            if (deckCounter) deckCounter.innerText = (gameState.deck || []).length;
 
-            if(gameState.deck.length === 0) {
-                document.getElementById('deck-top-card').style.display = 'none';
-            } else {
-                document.getElementById('deck-top-card').style.display = 'block';
+            let tu = document.getElementById('trump-under');
+            if (tu) {
+                if (gameState.trumpCard && gameState.trumpCard.rank) {
+                    tu.innerHTML = `<img class="card-img-elem" src="${getCardImageUrl(gameState.trumpCard)}">`;
+                    tu.style.display = 'block';
+                } else { tu.style.display = 'none'; }
+            }
+
+            let topCard = document.getElementById('deck-top-card');
+            if (topCard) {
+                if(!gameState.deck || gameState.deck.length === 0) {
+                    topCard.style.display = 'none';
+                } else {
+                    topCard.style.display = 'block';
+                }
             }
 
             let tArea = document.getElementById('table-area');
-            if (!gameState.table || gameState.table.length === 0) {
-                tArea.innerHTML = '';
-            } else {
-                tArea.innerHTML = gameState.table.map(p => `<div class="table-pair"> <img class="card-img-elem" src="${getCardImageUrl(p.attack)}"> ${p.defense ? `<img class="card-img-elem" src="${getCardImageUrl(p.defense)}">` : ''} </div>`).join('');
+            if (tArea) {
+                if (!gameState.table || gameState.table.length === 0) {
+                    tArea.innerHTML = '';
+                } else {
+                    tArea.innerHTML = gameState.table.map(p => `<div class="table-pair"> <img class="card-img-elem" src="${getCardImageUrl(p.attack)}"> ${p.defense ? `<img class="card-img-elem" src="${getCardImageUrl(p.defense)}">` : ''} </div>`).join('');
+                }
             }
 
-            let myHand = gameState.hands[myId] || [];
+            let myHand = (gameState.hands && gameState.hands[myId]) ? gameState.hands[myId] : [];
             let myCardsEl = document.getElementById('my-cards-container');
-            myCardsEl.innerHTML = myHand.map((c, idx) => `<div class="my-card-wrap" onclick="playCard(${idx})"><img class="card-img-elem" src="${getCardImageUrl(c)}"></div>`).join('');
+            if (myCardsEl) {
+                myCardsEl.innerHTML = myHand.map((c, idx) => `<div class="my-card-wrap" data-card-idx="${idx}" onclick="playCard(${idx})"> <img class="card-img-elem" src="${getCardImageUrl(c)}" style="pointer-events: none;"> </div>`).join('');
+            }
 
             let isDefMe = gameState.defenderIdx === myIdx;
             let isAttMe = gameState.attackerIdx === myIdx;
             let isMyThrowTurn = gameState.currentThrowerIdx === myIdx;
 
             let msg = document.getElementById('msg-box');
-            if (isDefMe) {
-                msg.innerText = "Вы защищаетесь!";
-                msg.style.color = "#e74c3c";
-            } else if (gameState.table.length > 0) {
-                let tRanks = getTableRanks(gameState.table);
-                let hasCardsToThrow = myHand.some(c => tRanks.has(c.rank));
-                if (isMyThrowTurn && hasCardsToThrow) {
-                    msg.innerText = "Ваша очередь подкидывать карты!";
+            if (msg) {
+                if (isDefMe) {
+                    msg.innerText = "Вы защищаетесь! Кликните карту, чтобы побить.";
+                    msg.style.color = "#e74c3c";
+                } else if (gameState.table && gameState.table.length > 0) {
+                    let tRanks = getTableRanks(gameState.table);
+                    let hasCardsToThrow = myHand.some(c => tRanks.has(c.rank));
+                    if (isMyThrowTurn && hasCardsToThrow) {
+                        msg.innerText = "Ваша очередь подкидывать карты!";
+                        msg.style.color = "#f1c40f";
+                    } else if (hasCardsToThrow) {
+                        msg.innerText = "Вы можете подкинуть карту к столу.";
+                        msg.style.color = "#f1c40f";
+                    } else {
+                        msg.innerText = "Стол занят / нет подходящих карт...";
+                        msg.style.color = "#a0b5a8";
+                    }
+                } else if (isAttMe) {
+                    msg.innerText = "Ваш первый ход! Кликните карту.";
                     msg.style.color = "#f1c40f";
                 } else {
-                    msg.innerText = "Стол занят (ход других игроков / ботов)...";
+                    msg.innerText = "Ход соперника...";
                     msg.style.color = "#a0b5a8";
                 }
-            } else if (isAttMe) {
-                msg.innerText = "Ваш первый ход!";
-                msg.style.color = "#f1c40f";
-            } else {
-                msg.innerText = "Ход соперника...";
-                msg.style.color = "#a0b5a8";
             }
 
-            let allCovered = gameState.table.length > 0 && gameState.table.every(p => p.defense !== null);
-            document.getElementById('btn-take').disabled = !isDefMe || gameState.table.length === 0;
-            
-            // Бить могут атакующие участники, когда все карты на столе успешно отбиты
-            let canSayDone = !isDefMe && gameState.table.length > 0 && allCovered;
-            document.getElementById('btn-done').disabled = !canSayDone;
+            let allCovered = gameState.table && gameState.table.length > 0 && gameState.table.every(p => p.defense !== null);
+            let btnTake = document.getElementById('btn-take');
+            let btnDone = document.getElementById('btn-done');
+            if (btnTake) btnTake.disabled = !isDefMe || !gameState.table || gameState.table.length === 0;
+            if (btnDone) btnDone.disabled = isDefMe || !gameState.table || gameState.table.length === 0 || !allCovered;
         }
 
-        function playCard(idx) { socket.emit('player_action', { roomCode: currentRoomCode, action: 'play_card', cardIdx: idx }); }
-        function sendAction(action) { socket.emit('player_action', { roomCode: currentRoomCode, action }); }
+        function playCard(idx) {
+            if (!currentRoomCode) return;
+            socket.emit('player_action', { roomCode: currentRoomCode, action: 'play_card', cardIdx: idx });
+        }
+
+        function sendAction(action) {
+            if (!currentRoomCode) return;
+            socket.emit('player_action', { roomCode: currentRoomCode, action });
+        }
     </script>
 </body>
 </html>

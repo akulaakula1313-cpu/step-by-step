@@ -111,7 +111,7 @@ io.on('connection', (socket) => {
     socket.on('player_action', ({ roomCode, action, cardIdx }) => {
         let room = rooms[roomCode];
         if (!room) { socket.emit('error_msg', 'Комната не найдена'); return; }
-        if (room.state || room.state.isGameOver) return;
+        if (!room.state || room.state.isGameOver) return;
         let humanP = room.players.find(p => p.id === socket.id);
         if (!humanP) return;
         
@@ -332,8 +332,6 @@ function executeBotTurnChain(room) {
     let state = room.state;
     let defP = state.playersInfo[state.defenderIdx];
     let uncoveredIdx = state.table.findIndex(p => p.defense === null);
-    
-    // 1. Защита бота
     if (uncoveredIdx !== -1) {
         if (defP && defP.isBot) {
             let attCard = state.table[uncoveredIdx].attack;
@@ -356,8 +354,6 @@ function executeBotTurnChain(room) {
         }
         return;
     }
-    
-    // 2. Первая атака бота
     if (state.table.length === 0) {
         let attP = state.playersInfo[state.attackerIdx];
         if (attP && attP.isBot) {
@@ -375,8 +371,6 @@ function executeBotTurnChain(room) {
         }
         return;
     }
-    
-    // 3. Подкидывание (всё отбито, проверяем очередь по кругу)
     if (state.table.length > 0 && uncoveredIdx === -1) {
         let playerCount = state.playersInfo.length;
         let checkedCount = 0;
@@ -395,22 +389,16 @@ function executeBotTurnChain(room) {
             if (canAddMore && hand.length > 0) {
                 hasValidCards = hand.some(c => tRanks.has(c.rank));
             }
-            
-            // Если текущий игрок — ЧЕЛОВЕК:
             if (!curThrower.isBot) {
                 if (hasValidCards) {
-                    // У человека ЕСТЬ подходящие карты — ждем его хода
                     broadcastState(room);
                     return;
                 } else {
-                    // У человека НЕТ нужных карт — автоматически пропускаем его дальше
                     state.currentThrowerIdx = (state.currentThrowerIdx + 1) % playerCount;
                     checkedCount++;
                     continue;
                 }
             }
-            
-            // Если текущий игрок — БОТ и у него есть подходящие карты
             if (curThrower.isBot && hasValidCards) {
                 let matchObj = hand.map((c, idx) => ({c, idx})).filter(o => tRanks.has(o.c.rank));
                 if (matchObj.length > 0) {
@@ -425,13 +413,9 @@ function executeBotTurnChain(room) {
                     return;
                 }
             }
-            
-            // Если бот не может/не хочет подкидывать, двигаем очередь дальше
             state.currentThrowerIdx = (state.currentThrowerIdx + 1) % playerCount;
             checkedCount++;
         }
-        
-        // Обошли всех, никто не подкинул -> БИТО
         let mainAttackerId = state.playersInfo[state.attackerIdx].id;
         handleDone(room, mainAttackerId);
     }

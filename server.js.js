@@ -72,10 +72,7 @@ io.on('connection', (socket) => {
             maxPlayers: maxPlayers,
             players: [{ id: socket.id, isBot: false, name: 'Вы' }],
             state: null,
-            rematchVotes: new Set(),
-            rematchTimer: null,
-            botTimer: null,
-            botLoopTimeout: null
+            rematchTimer: null,            
         };
 
         rooms[code] = room;

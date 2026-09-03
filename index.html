@@ -256,6 +256,9 @@
         document.getElementById('main-menu').style.display = 'none';
         document.getElementById('game-over-screen').style.display = 'none';
         gameState = state;
+        if (!currentRoomCode && state.roomCode) {
+            currentRoomCode = state.roomCode;
+        }
         render();
     });
 
@@ -366,10 +369,12 @@
     }
 
     function playCard(cardIdx) {
+        if (!currentRoomCode) return;
         socket.emit('player_action', { roomCode: currentRoomCode, action: 'play_card', cardIdx });
     }
 
     function sendAction(action) {
+        if (!currentRoomCode) return;
         socket.emit('player_action', { roomCode: currentRoomCode, action });
     }
 </script>

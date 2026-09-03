@@ -290,14 +290,14 @@ function handlePlayCard(room, pId, cardIdx) {
     let card = hand[cardIdx];
     let attackerId = state.playersInfo[state.attackerIdx].id;
     let defenderId = state.playersInfo[state.defenderIdx].id;
-    let isAttackerParty = state.table.length === 0 ? (pId === attackerId) : (pId !== defenderId);
     
-    if (isAttackerParty) {
-        if (state.table.length === 0 && pId !== attackerId) { 
-            io.to(pId).emit('error_msg', 'Сейчас ход другого игрока!'); 
-            return false; 
-        }
-        if (state.table.length > 0) {
+    if (pId !== defenderId) {
+        if (state.table.length === 0) {
+            if (pId !== attackerId) { 
+                io.to(pId).emit('error_msg', 'Сейчас ход первого атакующего!'); 
+                return false; 
+            }
+        } else {
             let tRanks = getTableRanks(state.table);
             if (!tRanks.has(card.rank)) { 
                 io.to(pId).emit('error_msg', 'Такой карты нет на столе'); 

@@ -5,48 +5,104 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Дурак — онлайн</title>
 <style>
-*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#073d25;color:#fff;min-height:100vh}
-button,input{font:inherit}.screen{min-height:100vh;padding:22px}.menu{max-width:600px;margin:8vh auto;background:#0b5533;padding:28px;border-radius:20px;box-shadow:0 15px 50px #0006}
-h1{margin-top:0;text-align:center}.row{display:flex;gap:10px;margin:12px 0;flex-wrap:wrap}
-input,button{border:0;border-radius:12px;padding:12px 16px}input{flex:1;min-width:180px}button{cursor:pointer;font-weight:bold}
-.primary{background:#ffd34d}.secondary{background:#2f9df4;color:white}.danger{background:#e74747;color:white}
-.game{display:none;min-height:100vh;position:relative}.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 14px;background:#0003;border-radius:14px}
-#players{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:12px}.player{padding:9px 12px;background:#0003;border-radius:12px;text-align:center;min-width:100px}.me{outline:2px solid #ffd34d}
-.table-area{min-height:55vh;display:flex;align-items:center;justify-content:center;gap:35px;position:relative}.deck{display:flex;flex-direction:column;align-items:center}.pile{width:75px;height:105px;border-radius:10px;background:#1e3a8a;border:3px solid white;display:flex;align-items:center;justify-content:center}.trump{margin-top:8px;font-size:30px}
-#table{display:flex;gap:16px;flex-wrap:wrap;max-width:650px;justify-content:center}.pair{position:relative;width:100px;height:145px}.card{width:90px;height:130px;border-radius:10px;background:#fff;color:#111;padding:8px;display:flex;flex-direction:column;justify-content:space-between;font-weight:bold;box-shadow:0 5px 15px #0007;cursor:pointer}.red{color:#c22}.defense{position:absolute;left:18px;top:18px;transform:rotate(4deg)}
-.hand{position:fixed;bottom:0;left:0;right:0;padding:12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;background:#0005}.hand .card{width:72px;height:104px}.actions{position:fixed;right:18px;bottom:18px;display:flex;gap:8px}.status{text-align:center;font-size:20px;min-height:28px}.small{opacity:.8;font-size:13px}
-.hidden{display:none!important}@media(max-width:700px){.table-area{gap:8px}.card{width:70px;height:102px}.pair{width:78px;height:115px}.defense{left:12px;top:12px}.hand .card{width:58px;height:84px;font-size:12px}}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#073d25;color:#fff;min-height:100vh}
+button,input{font:inherit}
+.screen{min-height:100vh;padding:22px}
+.menu{max-width:650px;margin:8vh auto;background:#0b5533;padding:28px;border-radius:20px;box-shadow:0 15px 50px #0006}
+h1{margin-top:0;text-align:center}
+.row{display:flex;gap:10px;margin:12px 0;flex-wrap:wrap}
+input,button{border:0;border-radius:12px;padding:12px 16px}
+input{flex:1;min-width:180px}
+button{cursor:pointer;font-weight:bold}
+.primary{background:#ffd34d;color:#111}
+.secondary{background:#2f9df4;color:white}
+.danger{background:#e74747;color:white}
+button:disabled{opacity:.5;cursor:not-allowed}
+.game{display:none;min-height:100vh;position:relative;padding-bottom:125px}
+.topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 14px;background:#0003;border-radius:14px}
+#players{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:12px}
+.player{padding:9px 12px;background:#0003;border-radius:12px;text-align:center;min-width:100px}
+.me{outline:2px solid #ffd34d}
+.table-area{min-height:55vh;display:flex;align-items:center;justify-content:center;gap:35px;position:relative}
+.deck{display:flex;flex-direction:column;align-items:center}
+.pile{width:75px;height:105px;border-radius:10px;background:#1e3a8a;border:3px solid white;display:flex;align-items:center;justify-content:center}
+.trump{margin-top:8px;font-size:30px}
+#table{display:flex;gap:16px;flex-wrap:wrap;max-width:650px;justify-content:center}
+.pair{position:relative;width:100px;height:145px}
+.card{width:90px;height:130px;border-radius:10px;background:#fff;color:#111;padding:8px;display:flex;flex-direction:column;justify-content:space-between;font-weight:bold;box-shadow:0 5px 15px #0007;cursor:pointer;user-select:none}
+.card:hover{transform:translateY(-5px)}
+.red{color:#c22}
+.defense{position:absolute;left:18px;top:18px;transform:rotate(4deg)}
+.hand{position:fixed;bottom:0;left:0;right:0;padding:12px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;background:#0005;z-index:5}
+.hand .card{width:72px;height:104px}
+.actions{position:fixed;right:18px;bottom:18px;display:flex;gap:8px;z-index:6}
+.status{text-align:center;font-size:20px;min-height:28px}
+.small{opacity:.8;font-size:13px}
+.hidden{display:none!important}
+#lobbyInfo{text-align:center;margin:18px 0;padding:14px;background:#0003;border-radius:14px}
+@media(max-width:700px){
+  .table-area{gap:8px}
+  .card{width:70px;height:102px}
+  .pair{width:78px;height:115px}
+  .defense{left:12px;top:12px}
+  .hand .card{width:58px;height:84px;font-size:12px}
+}
 </style>
 </head>
 <body>
+
 <div id="menu" class="screen">
   <div class="menu">
     <h1>🃏 Дурак</h1>
-    <p style="text-align:center">Строгая очередь, боты не перепрыгивают людей.</p>
+    <p style="text-align:center">Строгая очередь. Боты не перепрыгивают людей.</p>
+
     <input id="name" placeholder="Ваше имя" maxlength="20" value="Игрок">
+
     <div class="row">
       <button class="primary" onclick="botGame(2)">2 игрока + боты</button>
       <button class="primary" onclick="botGame(3)">3 игрока + боты</button>
       <button class="primary" onclick="botGame(4)">4 игрока + боты</button>
     </div>
+
     <div class="row">
       <button class="secondary" onclick="createRoom()">Создать комнату</button>
       <input id="code" placeholder="Код комнаты">
       <button class="secondary" onclick="joinRoom()">Войти</button>
     </div>
+
     <div id="msg"></div>
   </div>
 </div>
 
 <div id="game" class="game">
-  <div class="topbar"><b>Комната: <span id="roomCode"></span></b><span>Козырь: <b id="trump"></b></span><span>Колода: <b id="deckCount"></b></span></div>
+  <div class="topbar">
+    <b>Комната: <span id="roomCode"></span></b>
+    <span>Козырь: <b id="trump"></b></span>
+    <span>Колода: <b id="deckCount"></b></span>
+  </div>
+
   <div id="players"></div>
   <div class="status" id="status"></div>
+
+  <div id="lobbyInfo" class="hidden">
+    <div>Ожидание игроков.</div>
+    <div class="small">Передайте код комнаты другим игрокам.</div>
+    <div style="margin-top:10px">
+      <button id="startRoom" class="primary hidden" onclick="startRoom()">НАЧАТЬ ИГРУ</button>
+    </div>
+  </div>
+
   <div class="table-area">
-    <div class="deck"><div class="pile">🂠</div><div class="trump" id="trump2"></div></div>
+    <div class="deck">
+      <div class="pile">🂠</div>
+      <div class="trump" id="trump2"></div>
+    </div>
     <div id="table"></div>
   </div>
+
   <div id="hand" class="hand"></div>
+
   <div class="actions">
     <button id="take" class="danger hidden" onclick="send('take')">БЕРУ</button>
     <button id="pass" class="secondary hidden" onclick="send('pass')">ПАС</button>
@@ -57,49 +113,85 @@ input,button{border:0;border-radius:12px;padding:12px 16px}input{flex:1;min-widt
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const socket = io();
-let state = null, myId = null, room = null;
+let state = null;
+let myId = null;
+let room = null;
 
-function name(){return document.getElementById('name').value.trim() || 'Игрок'}
-function msg(t){document.getElementById('msg').textContent=t}
-function showGame(){
-  document.getElementById('menu').style.display='none';
-  document.getElementById('game').style.display='block';
+function name(){
+  return document.getElementById('name').value.trim() || 'Игрок';
 }
+
+function msg(text){
+  document.getElementById('msg').textContent = text;
+}
+
+function showGame(){
+  document.getElementById('menu').style.display = 'none';
+  document.getElementById('game').style.display = 'block';
+}
+
 function botGame(count){
   socket.emit('createBotGame',{count,name:name()},r=>{
-    if(!r.ok)return msg(r.error||'Ошибка');
-    room=r.room;myId=r.playerId;showGame();
+    if(!r.ok) return msg(r.error || 'Ошибка');
+    room=r.room;
+    myId=r.playerId;
+    showGame();
   });
 }
+
 function createRoom(){
   socket.emit('createRoom',{name:name()},r=>{
-    if(!r.ok)return msg(r.error||'Ошибка');
-    room=r.room;myId=r.playerId;showGame();
-    msg('Комната создана. Передайте код: '+room);
+    if(!r.ok) return msg(r.error || 'Ошибка');
+    room=r.room;
+    myId=r.playerId;
+    showGame();
   });
 }
+
 function joinRoom(){
-  socket.emit('joinRoom',{code:document.getElementById('code').value,name:name()},r=>{
-    if(!r.ok)return msg(r.error||'Ошибка');
-    room=r.room;myId=r.playerId;showGame();
+  socket.emit('joinRoom',{
+    code:document.getElementById('code').value,
+    name:name()
+  },r=>{
+    if(!r.ok) return msg(r.error || 'Ошибка');
+    room=r.room;
+    myId=r.playerId;
+    showGame();
   });
 }
+
+function startRoom(){
+  socket.emit('startRoom',{room,playerId:myId},r=>{
+    if(!r.ok) alert(r.error || 'Не удалось начать игру');
+  });
+}
+
 function send(action){
   socket.emit(action,{room,playerId:myId});
 }
+
 function cardHtml(c,clickable=true,cls=''){
   const red=['♥','♦'].includes(c.suit);
-  return `<div class="card ${red?'red':''} ${cls}" ${clickable?`onclick="play('${c.id}')"`:''}>
-    <div>${c.rank}</div><div style="font-size:30px;text-align:center">${c.suit}</div><div>${c.rank}</div>
+  return `<div class="card ${red?'red':''} ${cls}" ${
+    clickable ? `onclick="play('${c.id}')"` : ''
+  }>
+    <div>${c.rank}</div>
+    <div style="font-size:30px;text-align:center">${c.suit}</div>
+    <div>${c.rank}</div>
   </div>`;
 }
-function play(cardId){socket.emit('playCard',{room,playerId:myId,cardId})}
+
+function play(cardId){
+  socket.emit('playCard',{room,playerId:myId,cardId});
+}
 
 socket.on('state',s=>{
-  state=s; room=s.id;
+  state=s;
+  room=s.id;
+
   document.getElementById('roomCode').textContent=s.id;
-  document.getElementById('trump').textContent=s.trump;
-  document.getElementById('trump2').textContent=s.trump;
+  document.getElementById('trump').textContent=s.trump || '—';
+  document.getElementById('trump2').textContent=s.trump || '';
   document.getElementById('deckCount').textContent=s.deckCount;
 
   const me=s.players.find(p=>p.id===myId);
@@ -107,26 +199,57 @@ socket.on('state',s=>{
   const def=s.players.find(p=>p.id===s.defender);
 
   document.getElementById('players').innerHTML=s.players.map(p=>
-    `<div class="player ${p.id===myId?'me':''}"><b>${p.name}</b><br>🂠 ${p.cardCount}<br><span class="small">${p.status||''}</span></div>`
+    `<div class="player ${p.id===myId?'me':''}">
+      <b>${escapeHtml(p.name)}</b><br>
+      🂠 ${p.cardCount}<br>
+      <span class="small">${escapeHtml(p.status||'')}</span>
+    </div>`
   ).join('');
 
+  const lobby = s.phase === 'lobby';
+  document.getElementById('lobbyInfo').classList.toggle('hidden',!lobby);
+  document.getElementById('startRoom').classList.toggle(
+    'hidden',
+    !(lobby && s.ownerId===myId && s.players.length>=2)
+  );
+
   document.getElementById('status').textContent =
+    lobby ? `Игроков: ${s.players.length}/4` :
     s.phase==='defense' ? `Защищается: ${def?.name||''}` :
     s.phase==='throw' ? `Подкидывает: ${turn?.name||''}` :
     s.phase==='end' ? 'Все карты отбиты — объявите БИТО' :
     s.phase==='attack' ? `Ходит: ${turn?.name||''}` : '';
 
   document.getElementById('table').innerHTML=s.table.map(p=>
-    `<div class="pair">${cardHtml(p.attack,false)}${p.defense?cardHtml(p.defense,false,'defense'):''}</div>`
+    `<div class="pair">${cardHtml(p.attack,false)}${
+      p.defense ? cardHtml(p.defense,false,'defense') : ''
+    }</div>`
   ).join('');
 
-  document.getElementById('hand').innerHTML=(me?.cards||[]).map(c=>cardHtml(c,true)).join('');
+  document.getElementById('hand').innerHTML=lobby
+    ? ''
+    : (me?.cards||[]).map(c=>cardHtml(c,true)).join('');
 
   const myTurn=s.turn===myId;
-  document.getElementById('take').classList.toggle('hidden',!(s.phase==='defense'&&s.defender===myId));
-  document.getElementById('pass').classList.toggle('hidden',!(s.phase==='throw'&&myTurn));
-  document.getElementById('bito').classList.toggle('hidden',!(s.phase==='end'&&s.attacker===myId));
+  document.getElementById('take').classList.toggle(
+    'hidden',!(s.phase==='defense'&&s.defender===myId)
+  );
+  document.getElementById('pass').classList.toggle(
+    'hidden',!(s.phase==='throw'&&myTurn)
+  );
+  document.getElementById('bito').classList.toggle(
+    'hidden',!(s.phase==='end'&&s.attacker===myId)
+  );
 });
+
+function escapeHtml(value){
+  return String(value)
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'","&#039;");
+}
 </script>
 </body>
 </html>

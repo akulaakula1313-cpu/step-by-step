@@ -5,7 +5,11 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
+const io = new Server(server, { 
+    cors: { origin: "*", methods: ["GET", "POST"] },
+    pingTimeout: 60000,
+    pingInterval: 25000
+});
 
 app.use(express.static(path.join(__dirname)));
 app.get('/', (req, res) => { res.sendFile(path.resolve(__dirname, 'index.html')); });
@@ -19,19 +23,25 @@ const RANKS = [
 const SUITS = ["♠", "♥", "♦", "♣"];
 
 io.on('connection', (socket) => {
-    console.log('Игрок подключился:', socket.id);
+    console.log(`[Подключение] Игрок присоединился: ${socket.id}`);
 
     socket.on('create_room', (maxPlayers) => {
         maxPlayers = parseInt(maxPlayers) || 2;
         if (maxPlayers < 2) maxPlayers = 2;
         if (maxPlayers > 4) maxPlayers = 4;
+        
         let code = Math.random().toString(36).substring(2, 8).toUpperCase();
         while (rooms[code]) { code = Math.random().toString(36).substring(2, 8).toUpperCase(); }
         
         let room = {
-            id: code, maxPlayers: maxPlayers,
+            id: code, 
+            maxPlayers: maxPlayers,
             players: [{ id: socket.id, isBot: false, name: 'Игрок 1' }],
-            state: null, rematchVotes: new Set(), rematchTimer: null, botTimer: null, botLoopTimeout: null
+            state: null, 
+            rematchVotes: new Set(), 
+            rematchTimer: null, 
+            botTimer: null, 
+            botLoopTimeout: null
         };
         rooms[code] = room;
         socket.join(code);
@@ -40,6 +50,7 @@ io.on('connection', (socket) => {
 
         room.botTimer = setTimeout(() => {
             if (room && !room.state && room.players.length < room.maxPlayers) {
+                console.log(`[Комната ${code}] Время ожидания вышло. Заполнение ботами.`);
                 fillRoomWithBots(room); 
                 initGameState(room); 
                 broadcastState(room); 
@@ -52,15 +63,21 @@ io.on('connection', (socket) => {
         maxPlayers = parseInt(maxPlayers) || 2;
         if (maxPlayers < 2) maxPlayers = 2;
         if (maxPlayers > 4) maxPlayers = 4;
-        let code = 'BOTS_' + Math.random().toString(36).substring(2, 6).toUpperCase();
         
+        let code = 'BOTS_' + Math.random().toString(36).substring(2, 6).toUpperCase();
         let room = {
-            id: code, maxPlayers: maxPlayers,
+            id: code, 
+            maxPlayers: maxPlayers,
             players: [{ id: socket.id, isBot: false, name: 'Вы' }],
-            state: null, rematchVotes: new Set(), rematchTimer: null, botTimer: null, botLoopTimeout: null
+            state: null, 
+            rematchVotes: new Set(), 
+            rematchTimer: null, 
+            botTimer: null, 
+            botLoopTimeout: null
         };
         rooms[code] = room;
         socket.join(code);
+        
         fillRoomWithBots(room); 
         initGameState(room); 
         broadcastState(room); 
@@ -68,7 +85,10 @@ io.on('connection', (socket) => {
     });
 
     socket.on('join_room', (code) => {
+        if (!code || typeof code !== 'string') return;
+        code = code.trim().toUpperCase();
         let room = rooms[code];
+        
         if (!room) { socket.emit('error_msg', 'Комната не найдена'); return; }
         if (room.state) { socket.emit('error_msg', 'Игра уже началась'); return; }
         if (room.players.length >= room.maxPlayers) { socket.emit('error_msg', 'Комната заполнена'); return; }
@@ -87,11 +107,16 @@ io.on('connection', (socket) => {
     });
 
     socket.on('send_message', ({ roomCode, message }) => {
+        if (!roomCode || !message) return;
         let room = rooms[roomCode];
-        if (!room || !message || message.trim() === '') return;
+        if (!room) return;
+        
         let player = room.players.find(p => p.id === socket.id);
         if (!player) return;
+        
         let cleanMsg = message.trim().substring(0, 150);
+        if (cleanMsg === '') return;
+
         io.to(room.id).emit('chat_message', {
             senderId: socket.id,
             senderName: player.name,
@@ -102,9 +127,15 @@ io.on('connection', (socket) => {
     socket.on('vote_rematch', (roomCode) => {
         let room = rooms[roomCode];
         if (!room || !room.state || !room.state.isGameOver) return;
+        
         room.rematchVotes.add(socket.id);
         let humanPlayers = room.players.filter(p => !p.isBot);
-        io.to(room.id).emit('rematch_voted', { votesCount: room.rematchVotes.size, totalNeeded: humanPlayers.length });
+        
+        io.to(room.id).emit('rematch_voted', { 
+            votesCount: room.rematchVotes.size, 
+            totalNeeded: humanPlayers.length 
+        });
+        
         if (room.rematchVotes.size >= humanPlayers.length) {
             if (room.rematchTimer) clearInterval(room.rematchTimer);
             startRematch(room);
@@ -115,16 +146,20 @@ io.on('connection', (socket) => {
         let room = rooms[roomCode];
         if (!room) { socket.emit('error_msg', 'Комната не найдена'); return; }
         if (!room.state || room.state.isGameOver) return;
+        
         let humanP = room.players.find(p => p.id === socket.id);
         if (!humanP) return;
+        
         let success = false;
         if (action === 'play_card') success = handlePlayCard(room, socket.id, cardIdx);
         else if (action === 'take') success = handleTake(room, socket.id);
         else if (action === 'done') success = handleDone(room, socket.id);
+        
         if (success) scheduleBotTurn(room);
     });
 
     socket.on('disconnect', () => {
+        console.log(`[Отключение] Игрок вышел: ${socket.id}`);
         for (let code in rooms) {
             let room = rooms[code];
             let idx = room.players.findIndex(p => p.id === socket.id);
@@ -155,7 +190,11 @@ function fillRoomWithBots(room) {
     let botNames = ["Бот Валера", "Бот Степан", "Бот Гриша"];
     let nameIdx = 0;
     while (room.players.length < room.maxPlayers) {
-        room.players.push({ id: 'BOT_' + Math.random().toString(36).substring(2, 8), isBot: true, name: botNames[nameIdx++ % botNames.length] });
+        room.players.push({ 
+            id: 'BOT_' + Math.random().toString(36).substring(2, 8), 
+            isBot: true, 
+            name: botNames[nameIdx++ % botNames.length] 
+        });
     }
 }
 
@@ -166,7 +205,11 @@ function updateLobby(room) {
 
 function initGameState(room) {
     let deck = []; let id = 0;
-    for (let s of SUITS) { for (let r of RANKS) { deck.push({ id: id++, suit: s, rank: r.rank, value: r.value }); } }
+    for (let s of SUITS) { 
+        for (let r of RANKS) { 
+            deck.push({ id: id++, suit: s, rank: r.rank, value: r.value }); 
+        } 
+    }
     for (let i = deck.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [deck[i], deck[j]] = [deck[j], deck[i]];
@@ -177,24 +220,39 @@ function initGameState(room) {
         hands[p.id] = deck.splice(0, 6); 
         sortHand(hands[p.id], trumpCard.suit); 
     });
+    
     let firstAttackerIdx = 0; let minTrumpValue = 999;
     room.players.forEach((p, idx) => {
         let trCards = hands[p.id].filter(c => c.suit === trumpCard.suit);
-        trCards.forEach(c => { if (c.value < minTrumpValue) { minTrumpValue = c.value; firstAttackerIdx = idx; } });
+        trCards.forEach(c => { 
+            if (c.value < minTrumpValue) { 
+                minTrumpValue = c.value; 
+                firstAttackerIdx = idx; 
+            } 
+        });
     });
+    
     let defenderIdx = (firstAttackerIdx + 1) % room.players.length;
     room.state = {
-        roomCode: room.id, deck, trumpCard, trumpSuit: trumpCard.suit, hands, table: [],
-        attackerIdx: firstAttackerIdx, defenderIdx: defenderIdx,
+        roomCode: room.id, 
+        deck, 
+        trumpCard, 
+        trumpSuit: trumpCard.suit, 
+        hands, 
+        table: [],
+        attackerIdx: firstAttackerIdx, 
+        defenderIdx: defenderIdx,
         playersInfo: room.players.map(p => ({ id: p.id, name: p.name, isBot: p.isBot })),
-        isGameOver: false, winner: null
+        isGameOver: false, 
+        winner: null
     };
     room.rematchVotes.clear();
 }
 
 function sortHand(hand, trumpSuit) {
     hand.sort((a, b) => {
-        let aTr = a.suit === trumpSuit ? 1 : 0; let bTr = b.suit === trumpSuit ? 1 : 0;
+        let aTr = a.suit === trumpSuit ? 1 : 0; 
+        let bTr = b.suit === trumpSuit ? 1 : 0;
         if (aTr !== bTr) return aTr - bTr;
         return a.value - b.value;
     });
@@ -210,29 +268,45 @@ function canBeat(att, def, trumpSuit) {
 
 function getTableRanks(table) {
     let ranks = new Set();
-    for (let p of table) { ranks.add(p.attack.rank); if (p.defense) ranks.add(p.defense.rank); }
+    for (let p of table) { 
+        ranks.add(p.attack.rank); 
+        if (p.defense) ranks.add(p.defense.rank); 
+    }
     return ranks;
 }
 
-function countDefendedPairs(table) { return table.filter(p => p.defense !== null).length; }
+function countDefendedPairs(table) { 
+    return table.filter(p => p.defense !== null).length; 
+}
 
 function handlePlayCard(room, pId, cardIdx) {
     let state = room.state;
     let hand = state.hands[pId];
-    if (!hand || cardIdx < 0 || cardIdx >= hand.length) { io.to(pId).emit('error_msg', 'Неверная карта'); return false; }
+    if (!hand || cardIdx < 0 || cardIdx >= hand.length) { 
+        io.to(pId).emit('error_msg', 'Неверная карта'); 
+        return false; 
+    }
+    
     let card = hand[cardIdx];
     let attackerId = state.playersInfo[state.attackerIdx].id;
     let defenderId = state.playersInfo[state.defenderIdx].id;
     let isAttackerParty = state.table.length === 0 ? (pId === attackerId) : (pId !== defenderId);
     
     if (isAttackerParty) {
-        if (state.table.length === 0 && pId !== attackerId) { io.to(pId).emit('error_msg', 'Сейчас ход другого игрока!'); return false; }
+        if (state.table.length === 0 && pId !== attackerId) { 
+            io.to(pId).emit('error_msg', 'Сейчас ход другого игрока!'); 
+            return false; 
+        }
         if (state.table.length > 0) {
             let tRanks = getTableRanks(state.table);
-            if (!tRanks.has(card.rank)) { io.to(pId).emit('error_msg', 'Такой карты нет на столе'); return false; }
+            if (!tRanks.has(card.rank)) { 
+                io.to(pId).emit('error_msg', 'Такой карты нет на столе'); 
+                return false; 
+            }
             let defHandLen = state.hands[defenderId].length;
             if (state.table.length >= Math.min(6, defHandLen + countDefendedPairs(state.table))) {
-                io.to(pId).emit('error_msg', 'У защищающегося нет столько карт'); return false;
+                io.to(pId).emit('error_msg', 'У защищающегося нет столько карт'); 
+                return false;
             }
         }
         hand.splice(cardIdx, 1);
@@ -240,17 +314,28 @@ function handlePlayCard(room, pId, cardIdx) {
         checkGameOver(room); 
         broadcastState(room); 
         return true;
+        
     } else if (pId === defenderId) {
-        if (state.table.length === 0) { io.to(pId).emit('error_msg', 'Стол пуст'); return false; }
+        if (state.table.length === 0) { 
+            io.to(pId).emit('error_msg', 'Стол пуст'); 
+            return false; 
+        }
         let uncoveredIdx = state.table.findIndex(p => p.defense === null);
-        if (uncoveredIdx === -1) { io.to(pId).emit('error_msg', 'Все отбито'); return false; }
+        if (uncoveredIdx === -1) { 
+            io.to(pId).emit('error_msg', 'Все отбито'); 
+            return false; 
+        }
         let attCard = state.table[uncoveredIdx].attack;
-        if (!canBeat(attCard, card, state.trumpSuit)) { io.to(pId).emit('error_msg', 'Не бьет карту'); return false; }
+        if (!canBeat(attCard, card, state.trumpSuit)) { 
+            io.to(pId).emit('error_msg', 'Не бьет карту'); 
+            return false; 
+        }
         hand.splice(cardIdx, 1);
         state.table[uncoveredIdx].defense = card;
         checkGameOver(room); 
         broadcastState(room); 
         return true;
+        
     } else { 
         io.to(pId).emit('error_msg', 'Не ваш ход'); 
         return false; 
@@ -262,6 +347,7 @@ function handleTake(room, pId) {
     let defenderId = state.playersInfo[state.defenderIdx].id;
     if (pId !== defenderId) { io.to(pId).emit('error_msg', 'Брать может только защищающийся'); return false; }
     if (state.table.length === 0) { io.to(pId).emit('error_msg', 'На столе нет карт'); return false; }
+    
     for (let p of state.table) {
         state.hands[pId].push(p.attack);
         if (p.defense) state.hands[pId].push(p.defense);
@@ -269,9 +355,12 @@ function handleTake(room, pId) {
     state.table = [];
     sortHand(state.hands[pId], state.trumpSuit);
     refillAllHands(state);
+    
     if (checkGameOver(room)) { broadcastState(room); return true; }
+    
     state.attackerIdx = (state.defenderIdx + 1) % state.playersInfo.length;
     state.defenderIdx = (state.attackerIdx + 1) % state.playersInfo.length;
+    
     broadcastState(room);
     scheduleBotTurn(room);
     return true;
@@ -285,11 +374,15 @@ function handleDone(room, pId) {
         io.to(pId).emit('error_msg', 'Не все карты отбиты');
         return false;
     }
+    
     state.table = [];
     refillAllHands(state);
+    
     if (checkGameOver(room)) { broadcastState(room); return true; }
+    
     state.attackerIdx = state.defenderIdx;
     state.defenderIdx = (state.attackerIdx + 1) % state.playersInfo.length;
+    
     broadcastState(room);
     scheduleBotTurn(room);
     return true;
@@ -312,10 +405,11 @@ function refillAllHands(state) {
 function checkGameOver(room) {
     let state = room.state;
     if (state.deck.length > 0) return false;
+    
     let playersWithCards = state.playersInfo.filter(p => state.hands[p.id] && state.hands[p.id].length > 0);
     if (playersWithCards.length <= 1) {
         state.isGameOver = true;
-        state.winner = playersWithCards.length === 1 ? playersWithCards.id : null;
+        state.winner = playersWithCards.length === 1 ? playersWithCards[0].id : null;
         io.to(room.id).emit('game_over', { state: state, winner: state.winner });
         startRematchCountdown(room);
         return true;
@@ -326,7 +420,7 @@ function checkGameOver(room) {
 function scheduleBotTurn(room) {
     if (!room || !room.state || room.state.isGameOver) return;
     if (room.botLoopTimeout) clearTimeout(room.botLoopTimeout);
-    room.botLoopTimeout = setTimeout(() => { executeBotTurnChain(room); }, 800);
+    room.botLoopTimeout = setTimeout(() => { executeBotTurnChain(room); }, 900);
 }
 
 function executeBotTurnChain(room) {
@@ -336,16 +430,18 @@ function executeBotTurnChain(room) {
     let attP = state.playersInfo[state.attackerIdx];
     let isDefenderBot = defP && defP.isBot;
     let isAttackerBot = attP && attP.isBot;
-    let uncoveredIdx = state.table.findIndex(p => p.defense === null);
     
+    let uncoveredIdx = state.table.findIndex(p => p.defense === null);
     if (uncoveredIdx !== -1 && !isDefenderBot) return;
     if (state.table.length === 0 && !isAttackerBot) return;
     
     let moved = false;
+    
     if (isDefenderBot && uncoveredIdx !== -1) {
         let attCard = state.table[uncoveredIdx].attack;
         let botHand = state.hands[defP.id] || [];
         let bestIdx = -1; let minVal = 999;
+        
         for (let i = 0; i < botHand.length; i++) {
             let c = botHand[i];
             if (canBeat(attCard, c, state.trumpSuit)) {
@@ -368,7 +464,7 @@ function executeBotTurnChain(room) {
             let targetIdx = 0;
             if (nonTrumps.length > 0) {
                 nonTrumps.sort((a,b) => a.c.value - b.c.value);
-                targetIdx = nonTrumps.idx;
+                targetIdx = nonTrumps[0].idx;
             }
             handlePlayCard(room, attP.id, targetIdx);
             moved = true;
@@ -387,6 +483,7 @@ function executeBotTurnChain(room) {
             let tRanks = getTableRanks(state.table);
             let defHandLen = (state.hands[defP.id] || []).length;
             let canAddMore = state.table.length < Math.min(6, defHandLen + countDefendedPairs(state.table));
+            
             if (canAddMore) {
                 let matchObj = botHand.map((c, idx) => ({c, idx})).filter(o => tRanks.has(o.c.rank));
                 if (matchObj.length > 0) {
@@ -396,16 +493,18 @@ function executeBotTurnChain(room) {
                         if (aTr !== bTr) return aTr - bTr;
                         return a.c.value - b.c.value;
                     });
-                    handlePlayCard(room, activeBot.id, matchObj.idx);
+                    handlePlayCard(room, activeBot.id, matchObj[0].idx);
                     moved = true;
                 }
             }
         }
     }
+    
     if (!moved && isAttackerBot && state.table.length > 0 && state.table.every(p => p.defense !== null)) {
         handleDone(room, attP.id);
         return;
     }
+    
     if (moved && !room.state.isGameOver) {
         scheduleBotTurn(room);
     }
@@ -415,6 +514,7 @@ function startRematchCountdown(room) {
     let timeLeft = 15;
     room.rematchVotes.clear();
     if (room.rematchTimer) clearInterval(room.rematchTimer);
+    
     io.to(room.id).emit('rematch_timer', timeLeft);
     room.rematchTimer = setInterval(() => {
         timeLeft--;
@@ -462,4 +562,6 @@ function broadcastState(room) {
 }
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => { console.log(`Сервер запущен на порту ${PORT}`); });
+server.listen(PORT, () => { 
+    console.log(`[Сервер] Запущен и успешно слушает порт ${PORT}`); 
+});

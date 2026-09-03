@@ -180,7 +180,7 @@
                 <button class="btn-start" style="background:#2ecc71; color:#fff;" onclick="createRoom()">✨ Создать комнату</button>
                 <div class="room-join-row">
                     <input type="text" id="room-code" class="room-input" placeholder="Код комнаты" maxlength="6">
-                    <button class="btn-start" style="width: auto; padding: 10px 20px;" onclick="joinRoom()">Войти</button>
+                    <button class="btn-start" style="width: auto; padding: 0 20px;" onclick="joinRoom()">Войти</button>
                 </div>
             </div>
         </div>
@@ -194,30 +194,24 @@
             </div>
         </div>
 
-        <!-- Seats for opponents -->
         <div id="seat-top" class="seat seat-top" style="display:none;"></div>
         <div id="seat-left" class="seat seat-left" style="display:none;"></div>
         <div id="seat-right" class="seat seat-right" style="display:none;"></div>
 
-        <!-- Deck area -->
         <div id="deck-area" style="display:none;">
-            <div style="position:relative;">
+            <div style="position: relative;">
                 <div id="trump-under" class="trump-card-under"></div>
                 <img id="deck-top-card" class="card-img-elem" src="https://deckofcardsapi.com/static/img/back.png" alt="Колода">
                 <div id="deck-counter" class="deck-counter-badge">36</div>
             </div>
         </div>
 
-        <!-- Table area -->
-        <div id="table-area"></div>
-
-        <!-- Player area -->
         <div id="player-area">
             <div id="msg-box">Ожидание начала игры...</div>
             <div class="action-bar">
-                <button id="btn-take" class="action-btn btn-take" style="display:none;" onclick="sendAction('take')">БЕРУ</button>
-                <button id="btn-pass" class="action-btn btn-pass" style="display:none;" onclick="sendAction('pass')">ПАС</button>
-                <button id="btn-done" class="action-btn btn-done" style="display:none;" onclick="sendAction('done')">БИТО</button>
+                <button id="btn-take" class="action-btn btn-take" onclick="sendAction('take')" style="display:none;">БЕРУ</button>
+                <button id="btn-pass" class="action-btn btn-pass" onclick="sendAction('pass')" style="display:none;">ПАС</button>
+                <button id="btn-done" class="action-btn btn-done" onclick="sendAction('done')" style="display:none;">БИТО</button>
             </div>
             <div id="my-cards-container" class="my-hand"></div>
         </div>
@@ -268,6 +262,7 @@
             render();
         });
         socket.on('error_msg', (msg) => { alert(msg); });
+
         socket.on('game_over', (data) => {
             let titleEl = document.getElementById('go-title');
             let descEl = document.getElementById('go-desc');
@@ -285,6 +280,7 @@
             document.getElementById('btn-rematch').style.opacity = "1";
             document.getElementById('game-over-modal').style.display = 'flex';
         });
+
         socket.on('rematch_timer', (timeLeft) => {
             document.getElementById('rematch-counter').innerText = `Авто-выход через: ${timeLeft}с`;
         });
@@ -364,8 +360,9 @@
                 }
 
                 let bubbleHTML = bubbleText ? `<div class="${bubbleClass}">${bubbleText}</div>` : '';
-                let backCardsHTML = Array(cardCount).fill(0).map(() => `<img class="card-img-back" src="https://deckofcardsapi.com/static/img/back.png" alt="card">`).join('');
-                seatEl.innerHTML = `<div class="player-profile"> ${bubbleHTML} <div class="avatar"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${p.id}" alt=""></div> <div class="p-name">${p.name}</div> </div> <div class="opp-hand">${backCardsHTML}</div>`;
+                let backCardsHTML = Array(cardCount).fill(0).map(() => `<img class="card-img-back" src="https://deckofcardsapi.com/static/img/back.png">`).join('');
+                
+                seatEl.innerHTML = `<div class="player-profile"> ${bubbleHTML} <div class="avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${p.id}" alt=""></div> <div class="p-name">${p.name}</div> </div> <div class="opp-hand">${backCardsHTML}</div>`;
                 seatEl.style.display = 'flex';
             }
 
@@ -375,7 +372,7 @@
             let tu = document.getElementById('trump-under');
             if (tu) {
                 if (gameState.trumpCard && gameState.trumpCard.rank) {
-                    tu.innerHTML = `<img class="card-img-elem" src="${getCardImageUrl(gameState.trumpCard)}" alt="trump">`;
+                    tu.innerHTML = `<img class="card-img-elem" src="${getCardImageUrl(gameState.trumpCard)}">`;
                     tu.style.display = 'block';
                 } else { tu.style.display = 'none'; }
             }
@@ -394,14 +391,14 @@
                 if (!gameState.table || gameState.table.length === 0) {
                     tArea.innerHTML = '';
                 } else {
-                    tArea.innerHTML = gameState.table.map(p => `<div class="table-pair"> <img class="card-img-elem" src="${getCardImageUrl(p.attack)}" alt="attack"> ${p.defense ? `<img class="card-img-elem" src="${getCardImageUrl(p.defense)}" alt="defense" style="position:absolute; left:16px; top:12px; z-index:2;">` : ''} </div>`).join('');
+                    tArea.innerHTML = gameState.table.map(p => `<div class="table-pair"> <img class="card-img-elem" src="${getCardImageUrl(p.attack)}"> ${p.defense ? `<img class="card-img-elem" src="${getCardImageUrl(p.defense)}">` : ''} </div>`).join('');
                 }
             }
 
             let myHand = (gameState.hands && gameState.hands[myId]) ? gameState.hands[myId] : [];
             let myCardsEl = document.getElementById('my-cards-container');
             if (myCardsEl) {
-                myCardsEl.innerHTML = myHand.map((c, idx) => `<div class="my-card-wrap" data-card-idx="${idx}" onclick="playCard(${idx})"> <img class="card-img-elem" src="${getCardImageUrl(c)}" style="pointer-events: none;" alt="mycard"> </div>`).join('');
+                myCardsEl.innerHTML = myHand.map((c, idx) => `<div class="my-card-wrap" data-card-idx="${idx}" onclick="playCard(${idx})"> <img class="card-img-elem" src="${getCardImageUrl(c)}" style="pointer-events: none;"> </div>`).join('');
             }
 
             let isDefMe = gameState.defenderIdx === myIdx;
@@ -419,8 +416,11 @@
                     if (isMyThrowTurn && hasCardsToThrow) {
                         msg.innerText = "Ваша очередь подкидывать! Можете походить или нажать ПАС.";
                         msg.style.color = "#f1c40f";
+                    } else if (isMyThrowTurn) {
+                        msg.innerText = "Ваша очередь подкидывать. Нет карт -> нажмите ПАС.";
+                        msg.style.color = "#3498db";
                     } else if (hasCardsToThrow) {
-                        msg.innerText = "У вас есть подходящие карты для подкидывания.";
+                        msg.innerText = "У вас есть подходящие карты для подкидывания (ожидайте очереди).";
                         msg.style.color = "#f1c40f";
                     } else {
                         msg.innerText = "Стол занят (ход других игроков)...";
@@ -439,9 +439,10 @@
             let btnTake = document.getElementById('btn-take');
             let btnDone = document.getElementById('btn-done');
             let btnPass = document.getElementById('btn-pass');
-            btnTake.style.display = (isDefMe && gameState.table && gameState.table.length > 0) ? 'block' : 'none';
-            btnDone.style.display = (!isDefMe && gameState.table && gameState.table.length > 0 && allCovered) ? 'block' : 'none';
-            btnPass.style.display = (!isDefMe && gameState.table && gameState.table.length > 0 && isMyThrowTurn && hasCardsToThrow) ? 'block' : 'none';
+
+            btnTake.style.display = isDefMe && gameState.table && gameState.table.length > 0 ? 'block' : 'none';
+            btnDone.style.display = !isDefMe && gameState.table && gameState.table.length > 0 && allCovered ? 'block' : 'none';
+            btnPass.style.display = !isDefMe && gameState.table && gameState.table.length > 0 && isMyThrowTurn ? 'block' : 'none';
         }
 
         function playCard(idx) {

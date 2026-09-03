@@ -6,7 +6,7 @@
     <title>Подкидной Дурак (с Ботами, Онлайн и Чатом)</title>
     <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4/dist/socket.io.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Cinzel:wght@700;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800&family=Montserrat:wght@600;700&display=swap');
         
         :root { 
             --felt-bg: #0b4d2b; 
@@ -132,12 +132,58 @@
 </head>
 <body>
     <div id="game-container">
-        <!-- Главное меню -->
+        <div class="top-left-controls">
+            <button id="music-btn" class="icon-btn" onclick="toggleMusic()">🎵 Музыка: ВЫКЛ</button>
+        </div>
+
+        <div id="deck-info">
+            <div style="position: relative; width: 30px; height: 44px;">
+                <div class="mini-card-stack"></div>
+                <div id="trump-container"></div>
+            </div>
+            <div class="deck-text">
+                <span id="trump-label">Козырь: -</span>
+                <span id="deck-count">В колоде: <b>36</b></span>
+            </div>
+        </div>
+
+        <div id="opponents-container" class="opponents-row"></div>
+
+        <div id="middle-zone">
+            <div class="zone-title">Игровой стол</div>
+            <div id="table-pairs-container" style="display: flex; gap: 10px; width: 100%; align-items: center;">
+                <div style="color: #698275; font-size: 11px; margin: auto;">Стол пуст</div>
+            </div>
+        </div>
+
+        <div id="control-panel">
+            <div id="message-box">Ожидание...</div>
+            <div class="actions">
+                <button id="btn-take" class="btn btn-danger" style="width: auto; padding: 8px 14px;" onclick="sendAction('take')" disabled>БЕРУ</button>
+                <button id="btn-done" class="btn btn-primary" style="width: auto; padding: 8px 14px;" onclick="sendAction('done')" disabled>ГОТОВО</button>
+            </div>
+        </div>
+
+        <div id="player-zone">
+            <div class="zone-title" style="top: -2px;">Ваши карты</div>
+            <div id="player-cards-container" class="hand-cards"></div>
+        </div>
+
+        <button id="chat-toggle-btn" onclick="toggleChat()">💬 Чат</button>
+        <div id="chat-panel">
+            <div style="font-size: 10px; color: var(--gold); font-weight: 700; margin-bottom: 4px; text-transform: uppercase;">Игровой чат</div>
+            <div id="chat-messages"></div>
+            <div class="chat-input-row">
+                <input type="text" id="chat-input-field" class="chat-input" placeholder="Сообщение..." maxlength="150" onkeydown="if(event.key==='Enter') sendChatMessage()">
+                <button class="chat-send" onclick="sendChatMessage()">ОТП</button>
+            </div>
+        </div>
+
         <div id="main-menu">
             <div class="menu-logo">ДУРАК</div>
             <div class="menu-subtitle">Онлайн и Игра с Ботами</div>
             <div class="menu-panel">
-                <div style="font-size: 11px; font-weight: 700; color: #cbd5e1;">Количество игроков:</div>
+                <div style="font-size: 11px; color: #cbd5e1; font-weight: 600;">Количество игроков:</div>
                 <div class="player-count-selector">
                     <button class="count-btn active" onclick="selectCount(2)">2</button>
                     <button class="count-btn" onclick="selectCount(3)">3</button>
@@ -147,74 +193,19 @@
                 <div class="menu-divider">или по сети</div>
                 <button class="btn btn-gold" onclick="createRoom()">✨ Создать комнату</button>
                 <div class="room-row">
-                    <input type="text" id="room-code-input" class="room-input" placeholder="КОД КОМНАТЫ" maxlength="6">
-                    <button class="btn btn-primary" style="width: auto; padding: 0 16px;" onclick="joinRoom()">Войти</button>
+                    <input type="text" id="room-code-input" class="room-input" placeholder="Код комнаты" maxlength="6">
+                    <button class="btn btn-primary" style="width: auto; padding: 0 14px;" onclick="joinRoom()">Войти</button>
                 </div>
                 <div id="menu-status"></div>
             </div>
         </div>
 
-        <!-- Верхняя панель управления -->
-        <div class="top-left-controls">
-            <button id="music-btn" class="icon-btn" onclick="toggleMusic()">🎵 Музыка: ВЫКЛ</button>
-        </div>
-
-        <!-- Информация о колоде -->
-        <div id="deck-info">
-            <div style="position: relative; width: 35px; height: 44px;">
-                <div id="trump-container"></div>
-                <div class="mini-card-stack" style="position:absolute; top:0; right:0;"></div>
-            </div>
-            <div class="deck-text">
-                <span id="trump-label">Козырь: -</span>
-                <span id="deck-count">В колоде: 36</span>
-            </div>
-        </div>
-
-        <!-- Зона противников -->
-        <div id="opponents-container" class="opponents-row"></div>
-
-        <!-- Игровой стол -->
-        <div id="middle-zone">
-            <div class="zone-title">Игровой стол</div>
-            <div id="table-pairs-container" style="display: flex; gap: 10px; overflow-x: auto; width: 100%; min-height: 100px; align-items: center;">
-                <div style="color: #698275; font-size: 11px; margin: auto;">Ожидание...</div>
-            </div>
-        </div>
-
-        <!-- Панель управления действиями -->
-        <div id="control-panel">
-            <div id="message-box">Ожидание...</div>
-            <div class="actions">
-                <button id="btn-take" class="btn btn-danger" style="width: auto; padding: 8px 14px;" onclick="sendAction('take')" disabled>БЕРУ</button>
-                <button id="btn-done" class="btn btn-primary" style="width: auto; padding: 8px 14px;" onclick="sendAction('done')" disabled>ГОТОВО</button>
-            </div>
-        </div>
-
-        <!-- Зона игрока -->
-        <div id="player-zone">
-            <div style="font-size: 10px; font-weight: 700; color: #8da396; margin-bottom: 2px;">Ваши карты</div>
-            <div id="player-cards-container" class="hand-cards"></div>
-        </div>
-
-        <!-- Чат -->
-        <button id="chat-toggle-btn" onclick="toggleChat()">💬 Чат</button>
-        <div id="chat-panel">
-            <div style="font-size: 11px; font-weight: 700; color: var(--gold); margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 2px;">Игровой чат</div>
-            <div id="chat-messages"></div>
-            <div class="chat-input-row">
-                <input type="text" id="chat-input-field" class="chat-input" placeholder="Сообщение..." maxlength="150" onkeydown="if(event.key==='Enter') sendChatMessage();">
-                <button class="chat-send" onclick="sendChatMessage()">ОТП</button>
-            </div>
-        </div>
-
-        <!-- Экран окончания игры -->
         <div id="game-over-screen">
             <div class="game-over-card">
-                <h1 id="winner-title">ИГРА ОКОНЧЕНА</h1>
-                <div id="rematch-timer-text">Новая игра через: <b id="timer-sec">15</b> сек. (Голосов: <b id="votes-count">0/0</b>)</div>
+                <h2 id="winner-title">ИГРА ОКОНЧЕНА</h2>
+                <div id="rematch-timer-text">Новая игра через: <span id="timer-sec">15</span> сек. (Голосов: <span id="votes-count">0/0</span>)</div>
                 <button id="btn-rematch" class="btn btn-gold" onclick="voteRematch()">🔄 Играть снова за столом</button>
-                <button class="btn btn-primary" style="background: #2a3830;" onclick="location.reload()">🏠 Выйти в меню</button>
+                <button class="btn btn-primary" onclick="location.reload()">🏠 Выйти в меню</button>
             </div>
         </div>
     </div>
@@ -235,12 +226,12 @@
                 bgMusic.play().then(() => {
                     musicEnabled = true;
                     btn.innerText = "🎵 Музыка: ВКЛ";
-                }).catch(e => {
+                }).catch(() => {
                     bgMusic.load();
                     bgMusic.play().then(() => {
                         musicEnabled = true;
                         btn.innerText = "🎵 Музыка: ВКЛ";
-                    }).catch(err => alert("Проверьте, загружен ли файл theme.mp3 в корень проекта"));
+                    }).catch(() => alert("Проверьте, загружен ли файл theme.mp3 в корень проекта"));
                 });
             } else {
                 bgMusic.pause();
@@ -306,6 +297,7 @@
         }
 
         function setMenuStatus(text) { document.getElementById('menu-status').innerText = text; }
+        
         function showMessage(text, isError = false) {
             let msgBox = document.getElementById('message-box');
             msgBox.innerText = text;
@@ -317,6 +309,7 @@
 
         function playWithBots() { setMenuStatus("Запуск..."); socket.emit('play_with_bots', selectedMaxPlayers); }
         function createRoom() { setMenuStatus("Создание..."); socket.emit('create_room', selectedMaxPlayers); }
+        
         function joinRoom() {
             let code = document.getElementById('room-code-input').value.trim().toUpperCase();
             if (!code) { setMenuStatus("Введите код!"); return; }
@@ -352,7 +345,7 @@
 
         socket.on('rematch_timer', (sec) => { document.getElementById('timer-sec').innerText = sec; });
         socket.on('rematch_voted', (data) => { document.getElementById('votes-count').innerText = `${data.votesCount}/${data.totalNeeded}`; });
-
+        
         socket.on('game_restarted', () => {
             document.getElementById('game-over-screen').style.display = 'none';
             let btnRematch = document.getElementById('btn-rematch');
@@ -373,10 +366,10 @@
         function renderCardHTML(card) {
             if (!card || !card.rank) return '';
             let colorClass = isRed(card.suit) ? "red" : "black";
-            return `<div class="card ${colorClass}">
-                <div><div class="card-rank">${card.rank}</div><div class="card-suit">${card.suit}</div></div>
-                <div class="card-center-suit">${card.suit}</div>
-                <div style="transform: rotate(180deg); text-align: right;"><div class="card-rank" style="text-align:right;">${card.rank}</div><div class="card-suit" style="text-align:right;">${card.suit}</div></div>
+            return `<div class="card ${colorClass}">  
+                <div><div class="card-rank">${card.rank}</div><div class="card-suit">${card.suit}</div></div>  
+                <div class="card-center-suit">${card.suit}</div>  
+                <div style="transform: rotate(180deg); text-align: right;"><div class="card-rank" style="text-align:right;">${card.rank}</div><div class="card-suit" style="text-align:right;">${card.suit}</div></div>  
             </div>`;
         }
 
@@ -386,6 +379,7 @@
             let playersInfo = gameState.playersInfo || [];
             let myHand = (gameState.hands && gameState.hands[myId]) ? gameState.hands[myId] : [];
             let oppContainer = document.getElementById('opponents-container');
+            
             if (oppContainer) {
                 oppContainer.innerHTML = "";
                 playersInfo.forEach((p) => {
@@ -401,7 +395,7 @@
 
             let deckCountEl = document.getElementById('deck-count');
             if (deckCountEl) deckCountEl.innerHTML = `В колоде: <b>${(gameState.deck || []).length}</b>`;
-
+            
             let trumpCont = document.getElementById('trump-container');
             let trumpLabel = document.getElementById('trump-label');
             if (gameState.trumpCard && gameState.trumpCard.rank) {
@@ -428,11 +422,12 @@
                 let availableWidth = Math.min(window.innerWidth - 40, 750);
                 let dynamicMargin = cardCount > 1 ? Math.min(-15, Math.floor((availableWidth - (cardCount * cardW)) / (cardCount - 1))) : 0;
                 if (dynamicMargin > 5) dynamicMargin = 5;
-                handContainer.innerHTML = myHand.map((card, idx) => `<div class="hand-card-wrap" style="margin-right: ${idx === cardCount - 1 ? 0 : dynamicMargin}px; z-index: ${idx};" onclick="playCard(${idx})">${renderCardHTML(card)}</div>`).join('');
+                handContainer.innerHTML = myHand.map((card, idx) => `<div class="hand-card-wrap" style="margin-right: ${idx === cardCount - 1 ? 0 : dynamicMargin}px; z-index: ${idx};" onclick="playCard(${idx})"> ${renderCardHTML(card)} </div>`).join('');
             }
 
             let isAttacker = playersInfo[gameState.attackerIdx] && playersInfo[gameState.attackerIdx].id === myId;
             let isDefender = playersInfo[gameState.defenderIdx] && playersInfo[gameState.defenderIdx].id === myId;
+            
             if (isDefender) {
                 showMessage("Вы защищаетесь!");
             } else if (isAttacker || (gameState.table && gameState.table.length > 0)) {

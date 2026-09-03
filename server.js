@@ -133,13 +133,12 @@ io.on('connection', (socket) => {
                 if (room.rematchTimer) clearInterval(room.rematchTimer);
                 if (room.botLoopTimeout) clearTimeout(room.botLoopTimeout);
                 
-                let wasGameStarted = !!room.state;
                 room.players.splice(idx, 1);
                 let humansLeft = room.players.filter(p => !p.isBot).length;
                 
                 if (humansLeft === 0) {
                     delete rooms[code];
-                } else if (wasGameStarted) {
+                } else if (room.state && !room.state.isGameOver) {
                     io.to(code).emit('opponent_disconnected');
                     delete rooms[code];
                 } else {
@@ -225,6 +224,7 @@ function handlePlayCard(room, pId, cardIdx) {
     let attackerId = state.playersInfo[state.attackerIdx].id;
     let defenderId = state.playersInfo[state.defenderIdx].id;
     let isAttackerParty = state.table.length === 0 ? (pId === attackerId) : (pId !== defenderId);
+    
     if (isAttackerParty) {
         if (state.table.length === 0 && pId !== attackerId) { io.to(pId).emit('error_msg', 'Сейчас ход другого игрока!'); return false; }
         if (state.table.length > 0) {
@@ -237,7 +237,9 @@ function handlePlayCard(room, pId, cardIdx) {
         }
         hand.splice(cardIdx, 1);
         state.table.push({ attack: card, defense: null, attackerId: pId });
-        checkGameOver(room); broadcastState(room); return true;
+        checkGameOver(room); 
+        broadcastState(room); 
+        return true;
     } else if (pId === defenderId) {
         if (state.table.length === 0) { io.to(pId).emit('error_msg', 'Стол пуст'); return false; }
         let uncoveredIdx = state.table.findIndex(p => p.defense === null);
@@ -246,9 +248,12 @@ function handlePlayCard(room, pId, cardIdx) {
         if (!canBeat(attCard, card, state.trumpSuit)) { io.to(pId).emit('error_msg', 'Не бьет карту'); return false; }
         hand.splice(cardIdx, 1);
         state.table[uncoveredIdx].defense = card;
-        checkGameOver(room); broadcastState(room); return true;
+        checkGameOver(room); 
+        broadcastState(room); 
+        return true;
     } else { 
-        io.to(pId).emit('error_msg', 'Не ваш ход'); return false; 
+        io.to(pId).emit('error_msg', 'Не ваш ход'); 
+        return false; 
     }
 }
 
@@ -268,6 +273,7 @@ function handleTake(room, pId) {
     state.attackerIdx = (state.defenderIdx + 1) % state.playersInfo.length;
     state.defenderIdx = (state.attackerIdx + 1) % state.playersInfo.length;
     broadcastState(room);
+    scheduleBotTurn(room);
     return true;
 }
 
@@ -285,6 +291,7 @@ function handleDone(room, pId) {
     state.attackerIdx = state.defenderIdx;
     state.defenderIdx = (state.attackerIdx + 1) % state.playersInfo.length;
     broadcastState(room);
+    scheduleBotTurn(room);
     return true;
 }
 
@@ -308,7 +315,7 @@ function checkGameOver(room) {
     let playersWithCards = state.playersInfo.filter(p => state.hands[p.id] && state.hands[p.id].length > 0);
     if (playersWithCards.length <= 1) {
         state.isGameOver = true;
-        state.winner = playersWithCards.length === 1 ? playersWithCards[0].id : null;
+        state.winner = playersWithCards.length === 1 ? playersWithCards.id : null;
         io.to(room.id).emit('game_over', { state: state, winner: state.winner });
         startRematchCountdown(room);
         return true;
@@ -319,57 +326,64 @@ function checkGameOver(room) {
 function scheduleBotTurn(room) {
     if (!room || !room.state || room.state.isGameOver) return;
     if (room.botLoopTimeout) clearTimeout(room.botLoopTimeout);
-    room.botLoopTimeout = setTimeout(() => { executeBotTurn(room); }, 1000);
+    room.botLoopTimeout = setTimeout(() => { executeBotTurnChain(room); }, 800);
 }
 
-function executeBotTurn(room) {
+function executeBotTurnChain(room) {
     if (!room || !room.state || room.state.isGameOver) return;
     let state = room.state;
     let defP = state.playersInfo[state.defenderIdx];
     let attP = state.playersInfo[state.attackerIdx];
+    let isDefenderBot = defP && defP.isBot;
+    let isAttackerBot = attP && attP.isBot;
+    let uncoveredIdx = state.table.findIndex(p => p.defense === null);
     
-    // 1. Защита бота
-    if (defP && defP.isBot) {
-        let uncoveredIdx = state.table.findIndex(p => p.defense === null);
-        if (uncoveredIdx !== -1) {
-            let attCard = state.table[uncoveredIdx].attack;
-            let botHand = state.hands[defP.id] || [];
-            let bestIdx = -1; let minVal = 999;
-            for (let i = 0; i < botHand.length; i++) {
-                let c = botHand[i];
-                if (canBeat(attCard, c, state.trumpSuit)) {
-                    let isTr = (c.suit === state.trumpSuit ? 1 : 0);
-                    let score = isTr * 100 + c.value;
-                    if (score < minVal) { minVal = score; bestIdx = i; }
-                }
-            }
-            if (bestIdx !== -1) {
-                handlePlayCard(room, defP.id, bestIdx);
-                scheduleBotTurn(room);
-                return;
-            } else {
-                handleTake(room, defP.id);
-                scheduleBotTurn(room);
-                return;
+    if (uncoveredIdx !== -1 && !isDefenderBot) return;
+    if (state.table.length === 0 && !isAttackerBot) return;
+    
+    let moved = false;
+    if (isDefenderBot && uncoveredIdx !== -1) {
+        let attCard = state.table[uncoveredIdx].attack;
+        let botHand = state.hands[defP.id] || [];
+        let bestIdx = -1; let minVal = 999;
+        for (let i = 0; i < botHand.length; i++) {
+            let c = botHand[i];
+            if (canBeat(attCard, c, state.trumpSuit)) {
+                let isTr = (c.suit === state.trumpSuit ? 1 : 0);
+                let score = isTr * 100 + c.value;
+                if (score < minVal) { minVal = score; bestIdx = i; }
             }
         }
-    }
-    
-    // 2. Атака или подкидывание ботов
-    let activeBot = state.playersInfo.find(p => p.isBot && p.id !== defP.id && state.hands[p.id] && state.hands[p.id].length > 0);
-    if (activeBot) {
-        let botHand = state.hands[activeBot.id] || [];
-        if (state.table.length === 0 && activeBot.id === attP.id) {
+        if (bestIdx !== -1) {
+            handlePlayCard(room, defP.id, bestIdx);
+            moved = true;
+        } else {
+            handleTake(room, defP.id);
+            return;
+        }
+    } else if (state.table.length === 0 && isAttackerBot) {
+        let botHand = state.hands[attP.id] || [];
+        if (botHand.length > 0) {
             let nonTrumps = botHand.map((c, idx) => ({c, idx})).filter(o => o.c.suit !== state.trumpSuit);
             let targetIdx = 0;
             if (nonTrumps.length > 0) {
                 nonTrumps.sort((a,b) => a.c.value - b.c.value);
-                targetIdx = nonTrumps[0].idx;
+                targetIdx = nonTrumps.idx;
             }
-            handlePlayCard(room, activeBot.id, targetIdx);
-            scheduleBotTurn(room);
-            return;
-        } else if (state.table.length > 0) {
+            handlePlayCard(room, attP.id, targetIdx);
+            moved = true;
+        }
+    } else if (state.table.length > 0 && uncoveredIdx === -1) {
+        if (isAttackerBot && state.table.every(p => p.defense !== null)) {
+            let attHand = state.hands[attP.id] || [];
+            if (Math.random() < 0.75 || attHand.length === 0 || state.table.length >= 6) {
+                handleDone(room, attP.id);
+                return;
+            }
+        }
+        let activeBot = state.playersInfo.find(p => p.isBot && p.id !== defP.id && (state.hands[p.id] || []).length > 0);
+        if (activeBot) {
+            let botHand = state.hands[activeBot.id] || [];
             let tRanks = getTableRanks(state.table);
             let defHandLen = (state.hands[defP.id] || []).length;
             let canAddMore = state.table.length < Math.min(6, defHandLen + countDefendedPairs(state.table));
@@ -382,23 +396,17 @@ function executeBotTurn(room) {
                         if (aTr !== bTr) return aTr - bTr;
                         return a.c.value - b.c.value;
                     });
-                    handlePlayCard(room, activeBot.id, matchObj[0].idx);
-                    scheduleBotTurn(room);
-                    return;
+                    handlePlayCard(room, activeBot.id, matchObj.idx);
+                    moved = true;
                 }
             }
         }
-        if (activeBot.id === attP.id && state.table.length > 0 && state.table.every(p => p.defense !== null)) {
-            if (Math.random() < 0.85 || botHand.length === 0) {
-                handleDone(room, activeBot.id);
-                scheduleBotTurn(room);
-                return;
-            }
-        }
     }
-    
-    if (attP && attP.isBot && state.table.length > 0 && state.table.every(p => p.defense !== null)) {
+    if (!moved && isAttackerBot && state.table.length > 0 && state.table.every(p => p.defense !== null)) {
         handleDone(room, attP.id);
+        return;
+    }
+    if (moved && !room.state.isGameOver) {
         scheduleBotTurn(room);
     }
 }

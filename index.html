@@ -4,10 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Карточная игра «Дурак»</title>
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
-
         :root {
             --table-green: #0d5c32;
             --card-w: 72px;
@@ -37,6 +35,15 @@
         .nav-left, .nav-right { display: flex; align-items: center; gap: 15px; cursor: pointer; opacity: 0.9; }
         .nav-left:hover, .nav-right:hover { opacity: 1; }
 
+        #room-badge {
+            position: absolute; top: 48px; left: 15px; background: rgba(0,0,0,0.6);
+            border: 1px solid #f1c40f; padding: 6px 12px; border-radius: 6px;
+            font-size: 12px; z-index: 90; display: none; align-items: center; gap: 8px;
+        }
+        #room-badge span { color: #f1c40f; font-weight: bold; letter-spacing: 1px; }
+        .btn-copy { background: #f1c40f; border: none; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; cursor: pointer; color: #111; }
+        .btn-copy:hover { background: #f39c12; }
+
         #main-menu {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.75); display: flex; flex-direction: column;
@@ -65,7 +72,7 @@
         .room-join-row { display: flex; gap: 8px; width: 100%; }
         .room-input { flex: 1; background: #09100c; border: 1px solid #1c2b21; padding: 10px; border-radius: 6px; color: #fff; text-align: center; text-transform: uppercase; outline: none; }
 
-        .seat { position: absolute; display: flex; flex-direction: column; align-items: center; z-index: 20; }
+        .seat { position: absolute; display: none; flex-direction: column; align-items: center; z-index: 20; }
         .seat-top { top: 50px; left: 50%; transform: translateX(-50%); }
         .seat-left { top: 42%; left: 20px; transform: translateY(-50%); }
         .seat-right { top: 42%; right: 20px; transform: translateY(-50%); }
@@ -91,7 +98,7 @@
         .seat-left .card-img-back, .seat-right .card-img-back { margin-left: 0; margin-top: -24px; width: 35px; height: 24px; }
         .seat-left .opp-hand .card-img-back:first-child, .seat-right .opp-hand .card-img-back:first-child { margin-top: 0; }
 
-        #deck-area { position: absolute; left: 340px; top: 42%; transform: translateY(-50%); display: flex; align-items: center; z-index: 10; }
+        #deck-area { position: absolute; left: 340px; top: 42%; transform: translateY(-50%); display: none; align-items: center; z-index: 10; }
         .card-img-elem {
             width: var(--card-w); height: var(--card-h); border-radius: 6px;
             box-shadow: -2px 3px 8px rgba(0,0,0,0.4); cursor: pointer; object-fit: fill; background: #fff;
@@ -132,6 +139,36 @@
             <div class="nav-right"><span onclick="toggleMusic()">🎵 Звук</span></div>
         </div>
 
+        <div id="room-badge">Код стола: <span id="room-code-val">------</span> <button class="btn-copy" onclick="copyRoomCode()">Копировать</button></div>
+
+        <!-- Игровые зоны оппонентов -->
+        <div id="seat-top" class="seat seat-top"></div>
+        <div id="seat-left" class="seat seat-left"></div>
+        <div id="seat-right" class="seat seat-right"></div>
+
+        <!-- Колода -->
+        <div id="deck-area">
+            <div style="position: relative;">
+                <div id="trump-under" class="trump-card-under"></div>
+                <img id="deck-top-card" class="card-img-elem" src="https://deckofcardsapi.com/static/img/back.png" alt="Колода">
+                <div class="deck-counter-badge" id="deck-counter">36</div>
+            </div>
+        </div>
+
+        <!-- Игровой стол -->
+        <div id="table-area"></div>
+
+        <!-- Зона игрока -->
+        <div id="player-area">
+            <div id="msg-box">Ожидание начала игры...</div>
+            <div class="action-bar">
+                <button id="btn-take" class="action-btn btn-take" onclick="sendAction('take')" disabled>БЕРУ</button>
+                <button id="btn-done" class="action-btn btn-done" onclick="sendAction('pass')" disabled>ПАС</button>
+            </div>
+            <div class="my-hand" id="my-cards-container"></div>
+        </div>
+
+        <!-- Главное меню -->
         <div id="main-menu">
             <div class="menu-modal">
                 <div class="menu-title">С кем будете играть?</div>
@@ -148,29 +185,6 @@
                     <button class="btn-start" style="width: auto; padding: 0 16px; background:#2980b9; color:#fff;" onclick="joinRoom()">Войти</button>
                 </div>
             </div>
-        </div>
-
-        <div id="seat-top" class="seat seat-top" style="display:none;"></div>
-        <div id="seat-left" class="seat seat-left" style="display:none;"></div>
-        <div id="seat-right" class="seat seat-right" style="display:none;"></div>
-
-        <div id="deck-area" style="display:none;">
-            <div style="position: relative;">
-                <div id="trump-under" class="trump-card-under"></div>
-                <img id="deck-top-card" class="card-img-elem" src="https://deckofcardsapi.com/static/img/back.png" alt="Колода">
-                <div id="deck-counter" class="deck-counter-badge">36</div>
-            </div>
-        </div>
-
-        <div id="table-area"></div>
-
-        <div id="player-area">
-            <div id="msg-box">Ожидание начала игры...</div>
-            <div class="action-bar">
-                <button id="btn-take" class="action-btn btn-take" onclick="sendAction('take')">БЕРУ</button>
-                <button id="btn-done" class="action-btn btn-done" onclick="sendAction('pass')">ПАС</button>
-            </div>
-            <div class="my-hand" id="my-cards-container"></div>
         </div>
     </div>
 
@@ -202,16 +216,47 @@
             if (code) { currentRoomCode = code; socket.emit('join_room', code); }
         }
 
-        socket.on('room_created', (data) => { currentRoomCode = data.code; document.getElementById('main-menu').style.display='none'; });
-        socket.on('lobby_update', (data) => { currentRoomCode = data.code; document.getElementById('main-menu').style.display='none'; });
+        function copyRoomCode() {
+            if (currentRoomCode && !currentRoomCode.startsWith('BOTS_')) {
+                navigator.clipboard.writeText(currentRoomCode);
+                alert("Код стола скопирован: " + currentRoomCode);
+            }
+        }
+
+        socket.on('room_created', (data) => {
+            currentRoomCode = data.code;
+            document.getElementById('main-menu').style.display = 'none';
+            document.getElementById('room-code-val').innerText = data.code;
+            document.getElementById('room-badge').style.display = 'flex';
+            document.getElementById('msg-box').innerText = `Комната создана! Ожидание игроков (${data.current}/${data.max})...`;
+        });
+
+        socket.on('lobby_update', (data) => {
+            currentRoomCode = data.code;
+            document.getElementById('main-menu').style.display = 'none';
+            if (!data.code.startsWith('BOTS_')) {
+                document.getElementById('room-code-val').innerText = data.code;
+                document.getElementById('room-badge').style.display = 'flex';
+            }
+            document.getElementById('msg-box').innerText = `В комнате игроков: ${data.current} из ${data.max}. Ожидание...`;
+        });
+
         socket.on('game_update', (state) => {
             document.getElementById('main-menu').style.display = 'none';
             document.getElementById('deck-area').style.display = 'flex';
             gameState = state;
-            if (state.roomCode) currentRoomCode = state.roomCode;
+            if (state.roomCode) {
+                currentRoomCode = state.roomCode;
+                if (!state.roomCode.startsWith('BOTS_')) {
+                    document.getElementById('room-code-val').innerText = state.roomCode;
+                    document.getElementById('room-badge').style.display = 'flex';
+                }
+            }
             render();
         });
+
         socket.on('error_msg', (msg) => { alert(msg); });
+        
         socket.on('game_over', (data) => {
             alert(data.winner === socket.id ? "Вы победили!" : (data.winner ? "Вы проиграли!" : "Ничья!"));
             location.reload();
@@ -233,24 +278,23 @@
             let myIdx = pInfo.findIndex(p => p.id === myId);
             let seats = ['seat-top', 'seat-left', 'seat-right'];
             seats.forEach(s => document.getElementById(s).style.display = 'none');
-
+            
             let seatMap = [];
             if (pInfo.length === 2) seatMap = ['seat-top'];
             else if (pInfo.length === 3) seatMap = ['seat-left', 'seat-right'];
             else if (pInfo.length === 4) seatMap = ['seat-left', 'seat-top', 'seat-right'];
-
+            
             let offsetIdx = 0;
             for (let i = 1; i < pInfo.length; i++) {
                 let targetPlayerIdx = (myIdx + i) % pInfo.length;
                 let p = pInfo[targetPlayerIdx];
                 let seatEl = document.getElementById(seatMap[offsetIdx++]);
                 if (!seatEl) continue;
-
+                
                 let cardCount = (gameState.hands[p.id] || []).length;
                 let isAtt = gameState.attackerIdx === targetPlayerIdx;
                 let isDef = gameState.defenderIdx === targetPlayerIdx;
                 let isSubTurn = gameState.turnSubIdx === targetPlayerIdx;
-                
                 let bubbleText = isSubTurn ? "Ходит..." : (isDef ? "Кроюсь" : (isAtt ? "Атака" : ""));
                 let bubbleHTML = bubbleText ? `<div class="speech-bubble">${bubbleText}</div>` : '';
                 let backCardsHTML = Array(cardCount).fill(0).map(() => `<img class="card-img-back" src="https://deckofcardsapi.com/static/img/back.png">`).join('');
@@ -258,35 +302,35 @@
                 seatEl.innerHTML = `<div class="player-profile"> ${bubbleHTML} <div class="avatar"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${p.id}" alt=""></div> <div class="p-name">${p.name}</div> </div> <div class="opp-hand">${backCardsHTML}</div>`;
                 seatEl.style.display = 'flex';
             }
-
+            
             document.getElementById('deck-counter').innerText = gameState.deck.length;
             let tu = document.getElementById('trump-under');
             if (gameState.trumpCard && gameState.trumpCard.rank) {
                 tu.innerHTML = `<img class="card-img-elem" src="${getCardImageUrl(gameState.trumpCard)}">`;
                 tu.style.display = 'block';
             } else { tu.style.display = 'none'; }
-
-            if(gameState.deck.length === 0) {
+            
+            if (gameState.deck.length === 0) {
                 document.getElementById('deck-top-card').style.display = 'none';
             } else {
                 document.getElementById('deck-top-card').style.display = 'block';
             }
-
+            
             let tArea = document.getElementById('table-area');
             if (!gameState.table || gameState.table.length === 0) {
                 tArea.innerHTML = '';
             } else {
                 tArea.innerHTML = gameState.table.map(p => `<div class="table-pair"> <img class="card-img-elem" src="${getCardImageUrl(p.attack)}"> ${p.defense ? `<img class="card-img-elem" src="${getCardImageUrl(p.defense)}">` : ''} </div>`).join('');
             }
-
+            
             let myHand = gameState.hands[myId] || [];
             let myCardsEl = document.getElementById('my-cards-container');
             myCardsEl.innerHTML = myHand.map((c, idx) => `<div class="my-card-wrap" onclick="playCard(${idx})"><img class="card-img-elem" src="${getCardImageUrl(c)}"></div>`).join('');
-
+            
             let isDefMe = gameState.defenderIdx === myIdx;
             let isMyTurnSub = gameState.turnSubIdx === myIdx && !isDefMe;
             let msg = document.getElementById('msg-box');
-
+            
             if (isDefMe) {
                 let uncovered = gameState.table.some(p => p.defense === null);
                 msg.innerText = uncovered ? "Вы защищаетесь!" : "Соперник думает / подкидывает...";
@@ -296,7 +340,7 @@
                 let currentSubPlayer = gameState.playersInfo[gameState.turnSubIdx];
                 msg.innerText = `Ходит / подкидывает: ${currentSubPlayer ? currentSubPlayer.name : '...'}`;
             }
-
+            
             document.getElementById('btn-take').disabled = !isDefMe || gameState.table.length === 0;
             let canPass = gameState.table.length > 0 && isMyTurnSub;
             document.getElementById('btn-done').disabled = !canPass;

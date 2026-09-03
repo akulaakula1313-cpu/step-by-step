@@ -14,6 +14,9 @@ const io = new Server(server, {
 app.use(express.static(path.join(__dirname)));
 app.get('/', (req, res) => { res.sendFile(path.resolve(__dirname, 'index.html')); });
 
+process.on('uncaughtException', (err) => { console.error('[Критическая ошибка сервера]:', err); });
+process.on('unhandledRejection', (reason) => { console.error('[Необработанный риджект]:', reason); });
+
 const rooms = {};
 const RANKS = [
     {rank: "6", value: 6}, {rank: "7", value: 7}, {rank: "8", value: 8},
@@ -24,126 +27,136 @@ const SUITS = ["♠", "♥", "♦", "♣"];
 
 io.on('connection', (socket) => {
     socket.on('create_room', (maxPlayers) => {
-        maxPlayers = parseInt(maxPlayers) || 2;
-        if (maxPlayers < 2) maxPlayers = 2;
-        if (maxPlayers > 4) maxPlayers = 4;
-        
-        let code = Math.random().toString(36).substring(2, 8).toUpperCase();
-        while (rooms[code]) { code = Math.random().toString(36).substring(2, 8).toUpperCase(); }
-        
-        let room = {
-            id: code, 
-            maxPlayers: maxPlayers,
-            players: [{ id: socket.id, isBot: false, name: 'Игрок 1' }],
-            state: null, 
-            rematchVotes: new Set(), 
-            rematchTimer: null, 
-            botTimer: null, 
-            botLoopTimeout: null
-        };
-        rooms[code] = room;
-        socket.join(code);
-        socket.emit('room_created', { code, maxPlayers, current: 1, max: maxPlayers });
-        updateLobby(room);
+        try {
+            maxPlayers = parseInt(maxPlayers) || 2;
+            if (maxPlayers < 2) maxPlayers = 2;
+            if (maxPlayers > 4) maxPlayers = 4;
+            
+            let code = Math.random().toString(36).substring(2, 8).toUpperCase();
+            while (rooms[code]) { code = Math.random().toString(36).substring(2, 8).toUpperCase(); }
+            
+            let room = {
+                id: code, 
+                maxPlayers: maxPlayers,
+                players: [{ id: socket.id, isBot: false, name: 'Игрок 1' }],
+                state: null, 
+                rematchVotes: new Set(), 
+                rematchTimer: null, 
+                botTimer: null, 
+                botLoopTimeout: null
+            };
+            rooms[code] = room;
+            socket.join(code);
+            socket.emit('room_created', { code, maxPlayers, current: 1, max: maxPlayers });
+            updateLobby(room);
 
-        room.botTimer = setTimeout(() => {
-            if (room && !room.state && room.players.length < room.maxPlayers) {
-                fillRoomWithBots(room); 
+            room.botTimer = setTimeout(() => {
+                if (room && !room.state && room.players.length < room.maxPlayers) {
+                    fillRoomWithBots(room); 
+                    initGameState(room); 
+                    broadcastState(room); 
+                    scheduleBotTurn(room);
+                }
+            }, 60000);
+        } catch(e) { console.error(e); }
+    });
+
+    socket.on('play_with_bots', (maxPlayers) => {
+        try {
+            maxPlayers = parseInt(maxPlayers) || 2;
+            if (maxPlayers < 2) maxPlayers = 2;
+            if (maxPlayers > 4) maxPlayers = 4;
+            
+            let code = 'BOTS_' + Math.random().toString(36).substring(2, 6).toUpperCase();
+            let room = {
+                id: code, 
+                maxPlayers: maxPlayers,
+                players: [{ id: socket.id, isBot: false, name: 'Вы' }],
+                state: null, 
+                rematchVotes: new Set(), 
+                rematchTimer: null, 
+                botTimer: null, 
+                botLoopTimeout: null
+            };
+            rooms[code] = room;
+            socket.join(code);
+            
+            fillRoomWithBots(room); 
+            initGameState(room); 
+            broadcastState(room); 
+            scheduleBotTurn(room);
+        } catch(e) { console.error(e); }
+    });
+
+    socket.on('join_room', (code) => {
+        try {
+            if (!code || typeof code !== 'string') return;
+            code = code.trim().toUpperCase();
+            let room = rooms[code];
+            
+            if (!room) { socket.emit('error_msg', 'Комната не найдена'); return; }
+            if (room.state) { socket.emit('error_msg', 'Игра уже началась'); return; }
+            if (room.players.length >= room.maxPlayers) { socket.emit('error_msg', 'Комната заполнена'); return; }
+
+            let pName = `Игрок ${room.players.length + 1}`;
+            room.players.push({ id: socket.id, isBot: false, name: pName });
+            socket.join(code);
+            updateLobby(room);
+
+            if (room.players.length === room.maxPlayers) {
+                if (room.botTimer) clearTimeout(room.botTimer);
                 initGameState(room); 
                 broadcastState(room); 
                 scheduleBotTurn(room);
             }
-        }, 60000);
-    });
-
-    socket.on('play_with_bots', (maxPlayers) => {
-        maxPlayers = parseInt(maxPlayers) || 2;
-        if (maxPlayers < 2) maxPlayers = 2;
-        if (maxPlayers > 4) maxPlayers = 4;
-        
-        let code = 'BOTS_' + Math.random().toString(36).substring(2, 6).toUpperCase();
-        let room = {
-            id: code, 
-            maxPlayers: maxPlayers,
-            players: [{ id: socket.id, isBot: false, name: 'Вы' }],
-            state: null, 
-            rematchVotes: new Set(), 
-            rematchTimer: null, 
-            botTimer: null, 
-            botLoopTimeout: null
-        };
-        rooms[code] = room;
-        socket.join(code);
-        
-        fillRoomWithBots(room); 
-        initGameState(room); 
-        broadcastState(room); 
-        scheduleBotTurn(room);
-    });
-
-    socket.on('join_room', (code) => {
-        if (!code || typeof code !== 'string') return;
-        code = code.trim().toUpperCase();
-        let room = rooms[code];
-        
-        if (!room) { socket.emit('error_msg', 'Комната не найдена'); return; }
-        if (room.state) { socket.emit('error_msg', 'Игра уже началась'); return; }
-        if (room.players.length >= room.maxPlayers) { socket.emit('error_msg', 'Комната заполнена'); return; }
-
-        let pName = `Игрок ${room.players.length + 1}`;
-        room.players.push({ id: socket.id, isBot: false, name: pName });
-        socket.join(code);
-        updateLobby(room);
-
-        if (room.players.length === room.maxPlayers) {
-            if (room.botTimer) clearTimeout(room.botTimer);
-            initGameState(room); 
-            broadcastState(room); 
-            scheduleBotTurn(room);
-        }
+        } catch(e) { console.error(e); }
     });
 
     socket.on('player_action', ({ roomCode, action, cardIdx }) => {
-        let room = rooms[roomCode];
-        if (!room || !room.state || room.state.isGameOver) return;
-        
-        let humanP = room.players.find(p => p.id === socket.id);
-        if (!humanP) return;
-        
-        let success = false;
-        if (action === 'play_card') success = handlePlayCard(room, socket.id, cardIdx);
-        else if (action === 'take') success = handleTake(room, socket.id);
-        else if (action === 'pass') success = handlePass(room, socket.id);
-        
-        if (success) {
-            if (room.botLoopTimeout) clearTimeout(room.botLoopTimeout);
-            scheduleBotTurn(room, 600);
-        }
+        try {
+            let room = rooms[roomCode];
+            if (!room || !room.state || room.state.isGameOver) return;
+            
+            let humanP = room.players.find(p => p.id === socket.id);
+            if (!humanP) return;
+            
+            let success = false;
+            if (action === 'play_card') success = handlePlayCard(room, socket.id, cardIdx);
+            else if (action === 'take') success = handleTake(room, socket.id);
+            else if (action === 'pass') success = handlePass(room, socket.id);
+            
+            if (success) {
+                if (room.botLoopTimeout) clearTimeout(room.botLoopTimeout);
+                scheduleBotTurn(room, 600);
+            }
+        } catch(e) { console.error(e); }
     });
 
     socket.on('disconnect', () => {
-        for (let code in rooms) {
-            let room = rooms[code];
-            let idx = room.players.findIndex(p => p.id === socket.id);
-            if (idx !== -1) {
-                if (room.botTimer) clearTimeout(room.botTimer);
-                if (room.rematchTimer) clearInterval(room.rematchTimer);
-                if (room.botLoopTimeout) clearTimeout(room.botLoopTimeout);
-                
-                room.players.splice(idx, 1);
-                let humansLeft = room.players.filter(p => !p.isBot).length;
-                
-                if (humansLeft === 0) {
-                    delete rooms[code];
-                } else if (room.state && !room.state.isGameOver) {
-                    io.to(code).emit('opponent_disconnected');
-                    delete rooms[code];
-                } else {
-                    updateLobby(room);
+        try {
+            for (let code in rooms) {
+                let room = rooms[code];
+                let idx = room.players.findIndex(p => p.id === socket.id);
+                if (idx !== -1) {
+                    if (room.botTimer) clearTimeout(room.botTimer);
+                    if (room.rematchTimer) clearInterval(room.rematchTimer);
+                    if (room.botLoopTimeout) clearTimeout(room.botLoopTimeout);
+                    
+                    room.players.splice(idx, 1);
+                    let humansLeft = room.players.filter(p => !p.isBot).length;
+                    
+                    if (humansLeft === 0) {
+                        delete rooms[code];
+                    } else if (room.state && !room.state.isGameOver) {
+                        io.to(code).emit('opponent_disconnected');
+                        delete rooms[code];
+                    } else {
+                        updateLobby(room);
+                    }
+                    break;
                 }
-                break;
             }
-        }
+        } catch(e) { console.error(e); }
     });
 });
 
@@ -305,6 +318,12 @@ function handlePlayCard(room, pId, cardIdx) {
         }
         hand.splice(cardIdx, 1);
         state.table[uncoveredIdx].defense = card;
+        state.passedSubPlayers.clear();
+        state.turnSubIdx = state.attackerIdx;
+        let attHandLen = (state.hands[state.playersInfo[state.attackerIdx].id] || []).length;
+        if (attHandLen === 0 || state.attackerIdx === state.defenderIdx) {
+            advanceSubTurn(room);
+        }
         checkGameOver(room);
         broadcastState(room);
         scheduleBotTurn(room, 800);
@@ -315,13 +334,15 @@ function handlePlayCard(room, pId, cardIdx) {
 function advanceSubTurn(room) {
     let state = room.state;
     let numPlayers = state.playersInfo.length;
-    let nextIdx = (state.turnSubIdx + 1) % numPlayers;
     let tRanks = getTableRanks(state.table);
-    let defHandLen = state.hands[state.playersInfo[state.defenderIdx].id].length;
+    let defHandLen = (state.hands[state.playersInfo[state.defenderIdx].id] || []).length;
+    let nextIdx = (state.turnSubIdx + 1) % numPlayers;
     let loops = 0;
     
     while (loops < numPlayers) {
-        let pId = state.playersInfo[nextIdx].id;
+        let pInfo = state.playersInfo[nextIdx];
+        if (!pInfo) break;
+        let pId = pInfo.id;
         let pHand = state.hands[pId] || [];
         let isDef = (nextIdx === state.defenderIdx);
         let hasPassed = state.passedSubPlayers.has(nextIdx);
@@ -333,7 +354,7 @@ function advanceSubTurn(room) {
             state.turnSubIdx = nextIdx;
             return;
         }
-        if (isDef || !hasValidCard || !canAdd) {
+        if (isDef || !hasValidCard || !canAdd || pHand.length === 0) {
             state.passedSubPlayers.add(nextIdx);
         }
         nextIdx = (nextIdx + 1) % numPlayers;
@@ -369,10 +390,12 @@ function checkAutoDoneOrNext(room) {
     for (let i = 0; i < numPlayers; i++) {
         if (i === state.defenderIdx) continue;
         if (state.passedSubPlayers.has(i)) continue;
-        let pId = state.playersInfo[i].id;
+        let pInfo = state.playersInfo[i];
+        if (!pInfo) continue;
+        let pId = pInfo.id;
         let pHand = state.hands[pId] || [];
         let hasValidCard = pHand.some(c => tRanks.has(c.rank));
-        let defHandLen = state.hands[state.playersInfo[state.defenderIdx].id].length;
+        let defHandLen = (state.hands[state.playersInfo[state.defenderIdx].id] || []).length;
         let tableLimit = Math.min(6, defHandLen + countDefendedPairs(state.table));
         if (hasValidCard && state.table.length < tableLimit) {
             canAnyoneAdd = true;
@@ -456,7 +479,7 @@ function scheduleBotTurn(room, delay = 800) {
         try {
             executeBotTurnChain(room);
         } catch (err) {
-            console.error("[Bot Error]", err);
+            console.error('[Bot Execution Error]:', err);
         }
     }, delay);
 }
@@ -474,6 +497,14 @@ function executeBotTurnChain(room) {
     let uncoveredIdx = state.table.findIndex(p => p.defense === null);
     
     if (!currSubP || state.turnSubIdx === state.defenderIdx) {
+        advanceSubTurn(room);
+        broadcastState(room);
+        scheduleBotTurn(room, 500);
+        return;
+    }
+    
+    if (currSubP.isBot && ((state.hands[currSubP.id] || []).length === 0 || state.passedSubPlayers.has(state.turnSubIdx))) {
+        state.passedSubPlayers.add(state.turnSubIdx);
         advanceSubTurn(room);
         broadcastState(room);
         scheduleBotTurn(room, 500);

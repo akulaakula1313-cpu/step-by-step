@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Карточная игра «Дурак»</title>
-    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4/dist/socket.io.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Roboto:wght@400;500;700&display=swap');
 
         :root {
             --table-green: #0d5c32;
@@ -65,7 +65,7 @@
         .room-join-row { display: flex; gap: 8px; width: 100%; }
         .room-input { flex: 1; background: #09100c; border: 1px solid #1c2b21; padding: 10px; border-radius: 6px; color: #fff; text-align: center; text-transform: uppercase; outline: none; }
 
-        .seat { position: absolute; display: flex; flex-direction: column; align-items: center; z-index: 20; }
+        .seat { position: absolute; display: flex; flex-direction: column; align-items: center; z-index: 20; display: none; }
         .seat-top { top: 50px; left: 50%; transform: translateX(-50%); }
         .seat-left { top: 42%; left: 20px; transform: translateY(-50%); }
         .seat-right { top: 42%; right: 20px; transform: translateY(-50%); }
@@ -85,19 +85,32 @@
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
 
         .opp-hand { display: flex; }
-        .card-img-back {
-            width: 24px; height: 35px; border-radius: 3px; margin-left: -12px;
-            box-shadow: -2px 2px 5px rgba(0,0,0,0.4); object-fit: cover;
+        .css-card-back {
+            width: 24px; height: 35px; background: radial-gradient(circle, #2980b9 0%, #1a5276 100%);
+            border: 1px solid #fff; border-radius: 3px; margin-left: -12px; box-shadow: -2px 2px 5px rgba(0,0,0,0.4);
         }
-        .opp-hand .card-img-back:first-child { margin-left: 0; }
+        .opp-hand .css-card-back:first-child { margin-left: 0; }
         .seat-left .opp-hand, .seat-right .opp-hand { flex-direction: column; }
-        .seat-left .card-img-back, .seat-right .card-img-back { margin-left: 0; margin-top: -24px; width: 35px; height: 24px; }
-        .seat-left .opp-hand .card-img-back:first-child, .seat-right .opp-hand .card-img-back:first-child { margin-top: 0; }
+        .seat-left .css-card-back, .seat-right .css-card-back { margin-left: 0; margin-top: -24px; width: 35px; height: 24px; }
+        .seat-left .opp-hand .css-card-back:first-child, .seat-right .opp-hand .css-card-back:first-child { margin-top: 0; }
 
-        #deck-area { position: absolute; left: 340px; top: 42%; transform: translateY(-50%); display: flex; align-items: center; z-index: 10; }
-        .card-img-elem {
-            width: var(--card-w); height: var(--card-h); border-radius: 6px;
-            box-shadow: -2px 3px 8px rgba(0,0,0,0.4); cursor: pointer; object-fit: fill; background: #fff;
+        .card {
+            width: var(--card-w); height: var(--card-h); background: #ffffff; border-radius: 6px;
+            box-shadow: -2px 3px 10px rgba(0,0,0,0.4); position: relative; cursor: pointer;
+            display: flex; flex-direction: column; justify-content: space-between; padding: 5px 7px; font-weight: 700;
+            border: 1px solid #dcdde1; flex-shrink: 0;
+        }
+        .card.red { color: #d63031; } 
+        .card.black { color: #2d3436; }
+        .c-rank { font-size: 14px; font-family: 'Cinzel', serif; line-height: 1; }
+        .c-suit { font-size: 12px; line-height: 1; }
+        .c-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 26px; }
+
+        #deck-area { position: absolute; left: 340px; top: 42%; transform: translateY(-50%); display: none; align-items: center; z-index: 10; }
+        .css-deck-top {
+            width: var(--card-w); height: var(--card-h); background: radial-gradient(circle, #2980b9 0%, #154360 100%);
+            border: 2px solid #fff; border-radius: 6px; box-shadow: -2px 3px 8px rgba(0,0,0,0.4);
+            display: flex; justify-content: center; align-items: center; font-size: 11px; font-weight: bold; color: #fff; text-align: center;
         }
         .trump-card-under { position: absolute; left: 0; top: 0; transform: rotate(90deg); z-index: -1; }
         .deck-counter-badge {
@@ -107,11 +120,11 @@
 
         #table-area {
             position: absolute; left: 430px; right: 260px; top: 38%; transform: translateY(-50%);
-            min-height: 120px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; z-index: 15;
+            min-height: 120px; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: center; z-index: 15;
         }
-        .table-pair { position: relative; width: calc(var(--card-w) + 16px); height: var(--card-h); }
-        .table-pair img:first-child { position: absolute; left: 0; top: 0; }
-        .table-pair img:nth-child(2) { position: absolute; left: 16px; top: 12px; z-index: 2; }
+        .table-pair { position: relative; width: calc(var(--card-w) + 18px); height: var(--card-h); flex-shrink: 0; }
+        .table-pair .card:first-child { position: absolute; left: 0; top: 0; }
+        .table-pair .card:nth-child(2) { position: absolute; left: 18px; top: 12px; z-index: 2; box-shadow: -3px 4px 12px rgba(0,0,0,0.5); }
 
         #player-area { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); width: 100%; max-width: 850px; display: flex; flex-direction: column; align-items: center; z-index: 25; }
         .my-hand { display: flex; justify-content: center; align-items: flex-end; margin-top: 6px; }
@@ -145,25 +158,27 @@
                 </div>
                 <button class="btn-start" onclick="playWithBots()">🤖 Играть с ботами</button>
                 <div class="menu-divider"></div>
-                <button class="btn-start" style="background:#27ae60; color:#fff;" onclick="createRoom()">✨ Создать комнату</button>
+                <button class="btn-start" style="background:#2ecc71; color:#fff;" onclick="createRoom()">✨ Создать комнату</button>
                 <div class="room-join-row">
                     <input type="text" id="room-code" class="room-input" placeholder="Код комнаты" maxlength="6">
-                    <button class="btn-start" style="width: auto; padding: 0 16px; background:#2980b9; color:#fff;" onclick="joinRoom()">Войти</button>
+                    <button class="btn-start" style="width: auto; padding: 10px 16px;" onclick="joinRoom()">Войти</button>
                 </div>
             </div>
         </div>
 
-        <div id="seat-top" class="seat seat-top" style="display:none;"></div>
-        <div id="seat-left" class="seat seat-left" style="display:none;"></div>
-        <div id="seat-right" class="seat seat-right" style="display:none;"></div>
+        <div id="seat-top" class="seat seat-top"></div>
+        <div id="seat-left" class="seat seat-left"></div>
+        <div id="seat-right" class="seat seat-right"></div>
 
-        <div id="deck-area" style="display:none;">
+        <div id="deck-area">
             <div style="position: relative;">
                 <div id="trump-under" class="trump-card-under"></div>
-                <img id="deck-top-card" class="card-img-elem" src="https://deckofcardsapi.com/static/img/back.png" alt="Колода">
+                <div id="deck-top-card" class="css-deck-top">КОЛОДА</div>
                 <div id="deck-counter" class="deck-counter-badge">36</div>
             </div>
         </div>
+
+        <div id="table-area"></div>
 
         <div id="player-area">
             <div id="msg-box">Ожидание начала игры...</div>
@@ -218,13 +233,12 @@
             location.reload();
         });
 
-        function getCardImageUrl(card) {
-            if (!card || !card.rank || !card.suit) return 'https://deckofcardsapi.com/static/img/back.png';
-            let suitMap = { '♠': 'S', '♥': 'H', '♦': 'D', '♣': 'C' };
-            let rankMap = { '10': '0' };
-            let r = rankMap[card.rank] || card.rank;
-            let s = suitMap[card.suit] || 'S';
-            return `https://deckofcardsapi.com/static/img/${r}${s}.png`;
+        function isRed(suit) { return suit === '♥' || suit === '♦'; }
+
+        function renderCardHTML(card) {
+            if (!card || !card.rank || !card.suit) return '';
+            let rc = isRed(card.suit) ? 'red' : 'black';
+            return `<div class="card ${rc}"> <div><div class="c-rank">${card.rank}</div><div class="c-suit">${card.suit}</div></div> <div class="c-center">${card.suit}</div> <div style="transform: rotate(180deg); text-align: right;"><div class="c-rank" style="text-align:right;">${card.rank}</div><div class="c-suit" style="text-align:right;">${card.suit}</div></div> </div>`;
         }
 
         function getTableRanks(table) {
@@ -263,6 +277,7 @@
                 let isCurrentTurn = gameState.currentThrowerIdx === targetPlayerIdx;
                 let bubbleText = "";
                 let bubbleClass = "speech-bubble";
+
                 if (isDef) {
                     bubbleText = "Кроюсь";
                 } else if (isCurrentTurn && gameState.table && gameState.table.length > 0) {
@@ -271,9 +286,9 @@
                 } else if (gameState.attackerIdx === targetPlayerIdx && (!gameState.table || gameState.table.length === 0)) {
                     bubbleText = "Ходит";
                 }
+
                 let bubbleHTML = bubbleText ? `<div class="${bubbleClass}">${bubbleText}</div>` : '';
-                let backCardsHTML = Array(cardCount).fill(0).map(() => `<img class="card-img-back" src="https://deckofcardsapi.com/static/img/back.png">`).join('');
-                
+                let backCardsHTML = Array(cardCount).fill(0).map(() => `<div class="css-card-back"></div>`).join('');
                 seatEl.innerHTML = `<div class="player-profile"> ${bubbleHTML} <div class="avatar"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${p.id}" alt=""></div> <div class="p-name">${p.name}</div> </div> <div class="opp-hand">${backCardsHTML}</div>`;
                 seatEl.style.display = 'flex';
             }
@@ -284,7 +299,7 @@
             let tu = document.getElementById('trump-under');
             if (tu) {
                 if (gameState.trumpCard && gameState.trumpCard.rank) {
-                    tu.innerHTML = `<img class="card-img-elem" src="${getCardImageUrl(gameState.trumpCard)}">`;
+                    tu.innerHTML = renderCardHTML(gameState.trumpCard);
                     tu.style.display = 'block';
                 } else { tu.style.display = 'none'; }
             }
@@ -294,7 +309,7 @@
                 if(!gameState.deck || gameState.deck.length === 0) {
                     topCard.style.display = 'none';
                 } else {
-                    topCard.style.display = 'block';
+                    topCard.style.display = 'flex';
                 }
             }
 
@@ -303,20 +318,21 @@
                 if (!gameState.table || gameState.table.length === 0) {
                     tArea.innerHTML = '';
                 } else {
-                    tArea.innerHTML = gameState.table.map(p => `<div class="table-pair"> <img class="card-img-elem" src="${getCardImageUrl(p.attack)}"> ${p.defense ? `<img class="card-img-elem" src="${getCardImageUrl(p.defense)}">` : ''} </div>`).join('');
+                    tArea.innerHTML = gameState.table.map(p => `<div class="table-pair"> ${renderCardHTML(p.attack)} ${p.defense ? renderCardHTML(p.defense) : ''} </div>`).join('');
                 }
             }
 
             let myHand = (gameState.hands && gameState.hands[myId]) ? gameState.hands[myId] : [];
             let myCardsEl = document.getElementById('my-cards-container');
             if (myCardsEl) {
-                myCardsEl.innerHTML = myHand.map((c, idx) => `<div class="my-card-wrap" data-card-idx="${idx}" onclick="playCard(${idx})"> <img class="card-img-elem" src="${getCardImageUrl(c)}" style="pointer-events: none;"> </div>`).join('');
+                myCardsEl.innerHTML = myHand.map((c, idx) => `<div class="my-card-wrap" data-card-idx="${idx}" onclick="playCard(${idx})"> ${renderCardHTML(c)} </div>`).join('');
             }
 
             let isDefMe = gameState.defenderIdx === myIdx;
             let isAttMe = gameState.attackerIdx === myIdx;
             let isMyThrowTurn = gameState.currentThrowerIdx === myIdx;
             let msg = document.getElementById('msg-box');
+
             if (msg) {
                 if (isDefMe) {
                     msg.innerText = "Вы защищаетесь! Кликните карту, чтобы побить.";

@@ -215,10 +215,7 @@ function countDefendedPairs(table) { return table.filter(p => p.defense !== null
 function handlePlayCard(room, pId, cardIdx) {
     let state = room.state;
     let hand = state.hands[pId];
-    if (!hand || cardIdx < 0 || cardIdx >= hand.length) { 
-        io.to(pId).emit('error_msg', 'Неверная карта'); 
-        return false; 
-    }
+    if (!hand || cardIdx < 0 || cardIdx >= hand.length) { io.to(pId).emit('error_msg', 'Неверная карта'); return false; }
     
     let card = hand[cardIdx];
     let attackerId = state.playersInfo[state.attackerIdx].id;
@@ -227,48 +224,32 @@ function handlePlayCard(room, pId, cardIdx) {
     
     if (pId !== defenderId) {
         if (state.table.length === 0) {
-            if (pId !== attackerId) { 
-                io.to(pId).emit('error_msg', 'Сейчас ход первого атакующего!'); 
-                return false; 
-            }
+            if (pId !== attackerId) { io.to(pId).emit('error_msg', 'Сейчас ход первого атакующего!'); return false; }
         } else {
             let tRanks = getTableRanks(state.table);
-            if (!tRanks.has(card.rank)) { 
-                io.to(pId).emit('error_msg', 'Такой карты нет на столе'); 
-                return false; 
-            }
+            if (!tRanks.has(card.rank)) { io.to(pId).emit('error_msg', 'Такой карты нет на столе'); return false; }
             let defHandLen = state.hands[defenderId].length;
             if (state.table.length >= Math.min(6, defHandLen + countDefendedPairs(state.table))) {
-                io.to(pId).emit('error_msg', 'У защищающегося нет столько карт'); 
-                return false;
+                io.to(pId).emit('error_msg', 'У защищающегося нет столько карт'); return false;
             }
         }
         hand.splice(cardIdx, 1);
         state.table.push({ attack: card, defense: null, attackerId: pId });
         state.currentThrowerIdx = pIdx;
-        checkGameOver(room); 
-        broadcastState(room); 
+        checkGameOver(room);
+        broadcastState(room);
         return true;
     } else {
-        if (state.table.length === 0) { 
-            io.to(pId).emit('error_msg', 'Стол пуст'); 
-            return false; 
-        }
+        if (state.table.length === 0) { io.to(pId).emit('error_msg', 'Стол пуст'); return false; }
         let uncoveredIdx = state.table.findIndex(p => p.defense === null);
-        if (uncoveredIdx === -1) { 
-            io.to(pId).emit('error_msg', 'Все отбито'); 
-            return false; 
-        }
+        if (uncoveredIdx === -1) { io.to(pId).emit('error_msg', 'Все отбито'); return false; }
         let attCard = state.table[uncoveredIdx].attack;
-        if (!canBeat(attCard, card, state.trumpSuit)) { 
-            io.to(pId).emit('error_msg', 'Не бьет карту'); 
-            return false; 
-        }
+        if (!canBeat(attCard, card, state.trumpSuit)) { io.to(pId).emit('error_msg', 'Не бьет карту'); return false; }
         hand.splice(cardIdx, 1);
         state.table[uncoveredIdx].defense = card;
         state.currentThrowerIdx = state.attackerIdx;
-        checkGameOver(room); 
-        broadcastState(room); 
+        checkGameOver(room);
+        broadcastState(room);
         return true;
     }
 }
@@ -276,14 +257,8 @@ function handlePlayCard(room, pId, cardIdx) {
 function handleTake(room, pId) {
     let state = room.state;
     let defenderId = state.playersInfo[state.defenderIdx].id;
-    if (pId !== defenderId) { 
-        io.to(pId).emit('error_msg', 'Брать может только защищающийся'); 
-        return false; 
-    }
-    if (state.table.length === 0) { 
-        io.to(pId).emit('error_msg', 'На столе нет карт'); 
-        return false; 
-    }
+    if (pId !== defenderId) { io.to(pId).emit('error_msg', 'Брать может только защищающийся'); return false; }
+    if (state.table.length === 0) { io.to(pId).emit('error_msg', 'На столе нет карт'); return false; }
     for (let p of state.table) {
         state.hands[pId].push(p.attack);
         if (p.defense) state.hands[pId].push(p.defense);
@@ -291,40 +266,30 @@ function handleTake(room, pId) {
     state.table = [];
     sortHand(state.hands[pId], state.trumpSuit);
     refillAllHands(state);
-    if (checkGameOver(room)) { 
-        broadcastState(room); 
-        return true; 
-    }
+    if (checkGameOver(room)) { broadcastState(room); return true; }
     state.attackerIdx = (state.defenderIdx + 1) % state.playersInfo.length;
     state.defenderIdx = (state.attackerIdx + 1) % state.playersInfo.length;
     state.currentThrowerIdx = state.attackerIdx;
-    broadcastState(room); 
-    scheduleBotTurn(room); 
+    broadcastState(room);
+    scheduleBotTurn(room);
     return true;
 }
 
 function handleDone(room, pId) {
     let state = room.state;
     let isAttackerParty = pId !== state.playersInfo[state.defenderIdx].id;
-    if (!isAttackerParty) { 
-        io.to(pId).emit('error_msg', 'Защищающийся не может сказать Бито'); 
-        return false; 
-    }
+    if (!isAttackerParty) { io.to(pId).emit('error_msg', 'Защищающийся не может сказать Бито'); return false; }
     if (state.table.length === 0 || !state.table.every(p => p.defense !== null)) {
-        io.to(pId).emit('error_msg', 'Не все карты отбиты'); 
-        return false;
+        io.to(pId).emit('error_msg', 'Не все карты отбиты'); return false;
     }
     state.table = [];
     refillAllHands(state);
-    if (checkGameOver(room)) { 
-        broadcastState(room); 
-        return true; 
-    }
+    if (checkGameOver(room)) { broadcastState(room); return true; }
     state.attackerIdx = state.defenderIdx;
     state.defenderIdx = (state.attackerIdx + 1) % state.playersInfo.length;
     state.currentThrowerIdx = state.attackerIdx;
-    broadcastState(room); 
-    scheduleBotTurn(room); 
+    broadcastState(room);
+    scheduleBotTurn(room);
     return true;
 }
 
@@ -399,7 +364,7 @@ function executeBotTurnChain(room) {
             let attP = state.playersInfo[state.attackerIdx];
             if (hasCards(attP.id)) break;
             state.attackerIdx = (state.attackerIdx + 1) % playerCount;
-            state.defenderIdx = (state.defenderIdx + 1) % playerCount;
+            state.defenderIdx = (state.attackerIdx + 1) % playerCount;
             state.currentThrowerIdx = state.attackerIdx;
             checkedCount++;
         }

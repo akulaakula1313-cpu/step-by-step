@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Подкидной Дурак (с Ботами и Онлайн)</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800&family=Montserrat:wght@500;600;700&display=swap');
+
+        :root {
+            --felt-bg: #0b4d2b;
+            --felt-dark: #062e1a;
+            --gold: #f3c653;
+            --red: #e63946;
+            --card-w: 80px;
+            --card-h: 116px;
+        }
+
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+        body {
+            margin: 0; padding: 0; background: #04180e;
+            font-family: 'Montserrat', sans-serif; color: #fff;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; overflow: hidden;
+        }
+
+        #game-container {
+            width: 1200px; height: 800px;
+            background: radial-gradient(circle at 50% 40%, #156b3e 0%, var(--felt-bg) 50%, var(--felt-dark) 100%);
+            border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.8), inset 0 0 80px rgba(0,0,0,0.5);
+            position: relative; display: flex; flex-direction: column; justify-content: space-between;
+            padding: 15px 25px; border: 8px solid #052917;
+        }
+
+        #main-menu {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(4, 20, 12, 0.96); backdrop-filter: blur(8px);
+            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 300;
+        }
+
+        .menu-logo { font-family: 'Cinzel', serif; font-size: 50px; font-weight: 800; color: var(--gold); margin-bottom: 4px; text-shadow: 0 4px 20px rgba(243,198,83,0.4); }
+        .menu-subtitle { color: #8da396; font-size: 13px; margin-bottom: 20px; }
+        .menu-panel {
+            background: rgba(10, 42, 25, 0.7); border: 1px solid rgba(243, 198, 83, 0.2);
+            padding: 20px 30px; border-radius: 16px; display: flex; flex-direction: column; gap: 12px; width: 360px;
+        }
+
+        .player-count-selector { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+        .count-btn {
+            flex: 1; padding: 8px 0; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px; color: #fff; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 13px;
+        }
+        .count-btn.active { background: var(--gold); color: #111; border-color: var(--gold); }
+
+        .btn {
+            font-family: 'Montserrat', sans-serif; padding: 11px 18px; border: none; border-radius: 10px;
+            font-weight: 700; font-size: 13px; cursor: pointer; color: #fff; transition: all 0.2s;
+            display: flex; justify-content: center; align-items: center; gap: 8px; width: 100%;
+        }
+        .btn-gold { background: linear-gradient(135deg, #f3c653 0%, #cca331 100%); color: #111; }
+        .btn-primary { background: linear-gradient(135deg, #1d976c 0%, #116949 100%); }
+        .btn-bot { background: linear-gradient(135deg, #3a86ef 0%, #205295 100%); }
+        .btn-danger { background: linear-gradient(135deg, #e63946 0%, #b71c28 100%); }
+        .btn-secondary { background: #2b3a4a; }
+        .btn:disabled { background: #2a3830 !important; color: #5d7367 !important; cursor: not-allowed; }
+
+        .menu-divider { display: flex; align-items: center; text-align: center; color: #698275; font-size: 10px; text-transform: uppercase; margin: 2px 0; }
+        .menu-divider::before, .menu-divider::after { content: ''; flex: 1; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .menu-divider::before { margin-right: .8em; } .menu-divider::after { margin-left: .8em; }
+
+        .room-row { display: flex; gap: 8px; }
+        .room-input {
+            flex: 1; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px; padding: 10px; color: var(--gold); font-size: 13px; text-align: center; font-weight: 700; outline: none; text-transform: uppercase;
+        }
+
+        #menu-status { font-size: 12px; color: #f3c653; text-align: center; min-height: 16px; margin-top: 4px; }
+
+        .opponents-row { display: flex; justify-content: space-around; width: 100%; height: 125px; align-items: center; }
+        .opponent-box {
+            background: rgba(5, 36, 19, 0.6); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px; padding: 8px 14px; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 180px;
+        }
+        .opponent-box.active-turn { border-color: var(--gold); box-shadow: 0 0 10px rgba(243,198,83,0.4); }
+        .opp-name { font-size: 12px; font-weight: 700; color: #cbd5e1; }
+        .opp-cards { display: flex; }
+        .mini-card { width: 28px; height: 42px; background: radial-gradient(circle, #2a5298 0%, #1e3c72 100%); border: 1px solid #fff; border-radius: 4px; margin-right: -14px; }
+        .mini-card:last-child { margin-right: 0; }
+
+        #middle-zone {
+            height: 250px; background: rgba(4, 25, 14, 0.5); border-radius: 16px;
+            border: 1px dashed rgba(255, 255, 255, 0.12); display: flex; align-items: center; padding: 10px 25px; gap: 16px; overflow-x: auto; position: relative;
+        }
+        .zone-title { position: absolute; top: -10px; left: 15px; background: #093820; padding: 2px 10px; border-radius: 6px; font-size: 11px; color: var(--gold); font-weight: 700; border: 1px solid rgba(243,198,83,0.2); }
+
+        .card {
+            width: var(--card-w); height: var(--card-h); background: linear-gradient(135deg, #ffffff 0%, #f3f3ee 100%);
+            border-radius: 8px; box-shadow: -2px 4px 10px rgba(0,0,0,0.35); position: relative; cursor: pointer;
+            transition: transform 0.2s; display: flex; flex-direction: column; justify-content: space-between; padding: 6px 8px; font-weight: 700; flex-shrink: 0;
+        }
+        .card.red { color: #d62828; }
+        .card.black { color: #1b263b; }
+        .card:hover { transform: translateY(-12px); z-index: 20; }
+        .card-rank { font-size: 14px; font-family: 'Cinzel', serif; }
+        .card-suit { font-size: 12px; }
+        .card-center-suit { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 30px; opacity: 0.9; }
+
+        #deck-info { position: absolute; right: 25px; top: 18px; display: flex; gap: 14px; align-items: center; background: rgba(5, 36, 19, 0.7); padding: 8px 14px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); }
+        .mini-card-stack { width: 36px; height: 54px; background: radial-gradient(circle, #2a5298 0%, #1e3c72 100%); border: 2px solid #fff; border-radius: 4px; position: relative; }
+        .deck-text { font-size: 12px; color: #cbd5e1; display: flex; flex-direction: column; gap: 2px; }
+        .deck-text b { color: var(--gold); }
+
+        .table-pair { position: relative; width: 98px; height: var(--card-h); flex-shrink: 0; }
+        .table-pair .card:first-child { position: absolute; left: 0; top: 0; }
+        .table-pair .card:nth-child(2) { position: absolute; left: 18px; top: 12px; z-index: 5; }
+
+        #control-panel { display: flex; justify-content: space-between; align-items: center; padding: 0 10px; height: 50px; }
+        #message-box { font-size: 13px; color: var(--gold); font-weight: 600; background: rgba(0,0,0,0.25); padding: 8px 14px; border-radius: 8px; border-left: 3px solid var(--gold); }
+        .actions { display: flex; gap: 10px; }
+
+        #player-zone { height: 160px; display: flex; flex-direction: column; align-items: center; position: relative; }
+        .hand-cards { display: flex; justify-content: center; overflow-x: auto; max-width: 100%; padding: 5px 15px; }
+        .hand-cards .card { margin-right: -24px; }
+        .hand-cards .card:last-child { margin-right: 0; }
+        .hand-cards .card:hover { margin-right: 10px; }
+
+        .top-left-controls { position: absolute; left: 25px; top: 18px; z-index: 10; }
+        .icon-btn { background: rgba(5, 36, 19, 0.7); border: 1px solid rgba(255, 255, 255, 0.15); color: #cbd5e1; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; }
+
+        #game-over-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(4, 20, 12, 0.95); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 250; }
+        #game-over-screen h1 { font-family: 'Cinzel', serif; font-size: 42px; color: var(--gold); margin-bottom: 10px; }
+        #rematch-timer-text { font-size: 15px; color: #cbd5e1; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="main-menu">
+        <div class="menu-logo">ДУРАК</div>
+        <div class="menu-subtitle">Онлайн и Игра с Ботами</div>
+        <div class="menu-panel">
+            <div style="font-size: 12px; color: #8da396; text-align: center;">Количество игроков за столом:</div>
+            <div class="player-count-selector">
+                <button class="count-btn active" onclick="selectCount(2)">2</button>
+                <button class="count-btn" onclick="selectCount(3)">3</button>
+                <button class="count-btn" onclick="selectCount(4)">4</button>
+            </div>
+            
+            <button class="btn btn-bot" onclick="playWithBots()">🤖 Играть с ботами</button>
+            <div class="menu-divider">или по сети с другом</div>
+            
+            <button class="btn btn-gold" onclick="createRoom()">✨ Создать онлайн комнату</button>
+            
+            <div class="room-row">
+                <input type="text" id="room-code-input" class="room-input" placeholder="Код комнаты" maxlength="6">
+                <button class="btn btn-primary" style="width: 110px;" onclick="joinRoom()">Войти</button>
+            </div>
+            <div id="menu-status"></div>
+        </div>
+    </div>
+
+    <div class="top-left-controls">
+        <button class="icon-btn" onclick="location.reload()">🏠 Меню</button>
+    </div>
+
+    <div id="deck-info">
+        <div style="position: relative;">
+            <div class="mini-card-stack" id="trump-container"></div>
+        </div>
+        <div class="deck-text">
+            <div id="trump-label">Козырь: -</div>
+            <div id="deck-count">В колоде: 36</div>
+        </div>
+    </div>
+
+    <div class="opponents-row" id="opponents-container"></div>
+
+    <div id="middle-zone">
+        <div class="zone-title">Игровой стол</div>
+        <div id="table-pairs-container" style="display: flex; gap: 16px; align-items: center; height: 100%;"></div>
+    </div>
+
+    <div id="control-panel">
+        <div id="message-box">Ожидание игроков...</div>
+        <div class="actions">
+            <button id="btn-take" class="btn btn-danger" style="width: 130px;" onclick="sendAction('take')" disabled>БЕРУ</button>
+            <button id="btn-done" class="btn btn-primary" style="width: 130px;" onclick="sendAction('done')" disabled>ГОТОВО</button>
+        </div>
+    </div>
+
+    <div id="player-zone">
+        <div style="font-size: 12px; color: #8da396; margin-bottom: 6px; font-weight: 600;">Ваши карты</div>
+        <div class="hand-cards" id="player-cards-container"></div>
+    </div>
+
+    <div id="game-over-screen">
+        <h1 id="winner-title">ИГРА ОКОНЧЕНА</h1>
+        <div id="rematch-timer-text">Новая игра через: <span id="timer-sec">10</span> сек. (Голосов: <span id="votes-count">0</span>)</div>
+        <button id="btn-rematch" class="btn btn-gold" style="width: 220px;" onclick="voteRematch()">🔄 Играть снова</button>
+    </div>
+</div>
+
+<script>
+    const socket = io();
+    let selectedMaxPlayers = 2;
+    let currentRoomCode = null;
+    let gameState = null;
+
+    function selectCount(num) {
+        selectedMaxPlayers = num;
+        document.querySelectorAll('.count-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.innerText == num);
+        });
+    }
+
+    function setMenuStatus(text) { 
+        document.getElementById('menu-status').innerText = text; 
+    }
+
+    function playWithBots() {
+        setMenuStatus("Запуск игры с ботами...");
+        socket.emit('play_with_bots', selectedMaxPlayers);
+    }
+
+    function createRoom() {
+        setMenuStatus("Создание комнаты (авто-боты через 1 мин)...");
+        socket.emit('create_room', selectedMaxPlayers);
+    }
+
+    function joinRoom() {
+        let code = document.getElementById('room-code-input').value.trim().toUpperCase();
+        if (!code) { setMenuStatus("Введите код комнаты!"); return; }
+        setMenuStatus("Подключение...");
+        currentRoomCode = code;
+        socket.emit('join_room', code);
+    }
+
+    socket.on('room_created', (data) => {
+        currentRoomCode = data.code;
+        document.getElementById('main-menu').style.display = 'none';
+        document.getElementById('message-box').innerText = `Комната: ${data.code}. Ждем игроков (1/${data.maxPlayers}). Боты подключатся через 1 мин.`;
+    });
+
+    socket.on('lobby_update', (data) => {
+        currentRoomCode = data.code;
+        document.getElementById('main-menu').style.display = 'none';
+        document.getElementById('message-box').innerText = `Комната: ${data.code}. Игроков: ${data.current}/${data.max}`;
+    });
+
+    socket.on('error_msg', (msg) => { setMenuStatus(msg); });
+    socket.on('opponent_disconnected', () => { alert("Игрок вышел из игры."); location.reload(); });
+    socket.on('room_expired', () => { alert("Время ожидания истекло."); location.reload(); });
+
+    socket.on('game_update', (state) => {
+        document.getElementById('main-menu').style.display = 'none';
+        document.getElementById('game-over-screen').style.display = 'none';
+        gameState = state;
+        if (!currentRoomCode && state.roomCode) {
+            currentRoomCode = state.roomCode;
+        }
+        render();
+    });
+
+    socket.on('game_over', (data) => {
+        document.getElementById('game-over-screen').style.display = 'flex';
+        let isWinner = data.winner === socket.id;
+        document.getElementById('winner-title').innerText = isWinner ? "ПОБЕДА!" : (data.winner ? "ВЫ ПРОИГРАЛИ" : "НИЧЬЯ!");
+        document.getElementById('btn-rematch').disabled = false;
+        document.getElementById('btn-rematch').innerText = "🔄 Играть снова";
+    });
+
+    socket.on('rematch_timer', (sec) => {
+        document.getElementById('timer-sec').innerText = sec;
+    });
+
+    socket.on('rematch_voted', (data) => {
+        document.getElementById('votes-count').innerText = `${data.votesCount}/${data.totalNeeded}`;
+    });
+
+    socket.on('game_restarted', () => {
+        document.getElementById('game-over-screen').style.display = 'none';
+        document.getElementById('btn-rematch').disabled = false;
+        document.getElementById('btn-rematch').innerText = "🔄 Играть снова";
+    });
+
+    function voteRematch() {
+        document.getElementById('btn-rematch').disabled = true;
+        document.getElementById('btn-rematch').innerText = "Голос принят...";
+        if (currentRoomCode) socket.emit('vote_rematch', currentRoomCode);
+    }
+
+    function isRed(suit) { return suit === "♥" || suit === "♦"; }
+
+    function renderCardHTML(card) {
+        let colorClass = isRed(card.suit) ? "red" : "black";
+        return `<div class="card ${colorClass}">
+            <div>
+                <div class="card-rank">${card.rank}</div>
+                <div class="card-suit">${card.suit}</div>
+            </div>
+            <div class="card-center-suit">${card.suit}</div>
+            <div style="transform: rotate(180deg); text-align: right;">
+                <div class="card-rank" style="text-align:right;">${card.rank}</div>
+                <div class="card-suit" style="text-align:right;">${card.suit}</div>
+            </div>
+        </div>`;
+    }
+
+    function render() {
+        if (!gameState) return;
+        let myId = socket.id;
+        let playersInfo = gameState.playersInfo;
+        let myHand = gameState.hands[myId] || [];
+        
+        let oppContainer = document.getElementById('opponents-container');
+        oppContainer.innerHTML = "";
+        
+        playersInfo.forEach((p, idx) => {
+            if (p.id === myId) return;
+            let count = (gameState.hands[p.id] || []).length;
+            let isAtt = playersInfo[gameState.attackerIdx].id === p.id;
+            let isDef = playersInfo[gameState.defenderIdx].id === p.id;
+            let roleText = isAtt ? "⚔️ Атака" : (isDef ? "🛡️ Защита" : "⏳ Ждет");
+            let miniCardsHTML = Array(count).fill(0).map(() => `<div class="mini-card"></div>`).join('');
+            
+            oppContainer.innerHTML += `<div class="opponent-box ${isAtt || isDef ? 'active-turn' : ''}">
+                <div class="opp-name">${p.name} (${count}) • ${roleText}</div>
+                <div class="opp-cards">${miniCardsHTML}</div>
+            </div>`;
+        });
+
+        document.getElementById('deck-count').innerHTML = `В колоде: <b>${gameState.deck.length}</b>`;
+        
+        let trumpCont = document.getElementById('trump-container');
+        if (gameState.trumpCard) {
+            trumpCont.innerHTML = `<div style="position:absolute; top:-22px; left:-2px; transform: rotate(90deg) scale(0.42); transform-origin: top left;">${renderCardHTML(gameState.trumpCard)}</div>`;
+            document.getElementById('trump-label').innerHTML = `Козырь: <b>${gameState.trumpCard.rank}${gameState.trumpCard.suit}</b>`;
+        } else {
+            trumpCont.innerHTML = "";
+            document.getElementById('trump-label').innerHTML = `Козырь: <b>${gameState.trumpSuit}</b>`;
+        }
+
+        document.getElementById('table-pairs-container').innerHTML = gameState.table.map(p => `
+            <div class="table-pair">
+                ${renderCardHTML(p.attack)}
+                ${p.defense ? renderCardHTML(p.defense) : ''}
+            </div>
+        `).join('');
+
+        document.getElementById('player-cards-container').innerHTML = myHand.map((card, idx) => `
+            <div onclick="playCard(${idx})">${renderCardHTML(card)}</div>
+        `).join('');
+
+        let isAttacker = playersInfo[gameState.attackerIdx].id === myId;
+        let isDefender = playersInfo[gameState.defenderIdx].id === myId;
+
+        if (isDefender) {
+            document.getElementById('message-box').innerText = "Вы защищаетесь!";
+        } else if (isAttacker || gameState.table.length > 0) {
+            document.getElementById('message-box').innerText = "Ваш ход (Атака / Подкидывание)";
+        } else {
+            document.getElementById('message-box').innerText = "Ход других игроков / ботов...";
+        }
+
+        let allCovered = gameState.table.length > 0 && gameState.table.every(p => p.defense !== null);
+        document.getElementById('btn-take').disabled = !isDefender || gameState.table.length === 0;
+        document.getElementById('btn-done').disabled = gameState.table.length === 0 || !allCovered || !isAttacker;
+    }
+
+    function playCard(cardIdx) {
+        if (!currentRoomCode) return;
+        socket.emit('player_action', { roomCode: currentRoomCode, action: 'play_card', cardIdx });
+    }
+
+    function sendAction(action) {
+        if (!currentRoomCode) return;
+        socket.emit('player_action', { roomCode: currentRoomCode, action });
+    }
+</script>
+</body>
+</html>

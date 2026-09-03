@@ -279,68 +279,92 @@ function checkGameOver(room) {
 function scheduleBotTurn(room) {
     if (!room || !room.state || !room.state.isGameOver) {
         if (room.botLoopTimeout) clearTimeout(room.botLoopTimeout);
-        room.botLoopTimeout = setTimeout(() => { executeBotTurn(room); }, 1200);
+        room.botLoopTimeout = setTimeout(() => { executeBotTurn(room); }, 1100);
     }
 }
 
 function executeBotTurn(room) {
-    if (!room || !room.state || room.state.isGameOver) return;
+    if (!room || !room.state || !room.state.isGameOver) return;
     let state = room.state;
     let defP = state.playersInfo[state.defenderIdx];
     let attP = state.playersInfo[state.attackerIdx];
+
     if (defP.isBot) {
         let uncoveredIdx = state.table.findIndex(p => p.defense === null);
         if (uncoveredIdx !== -1) {
             let attCard = state.table[uncoveredIdx].attack;
             let botHand = state.hands[defP.id];
-            let bestCardIdx = -1;
+            
+            let bestIdx = -1;
+            let minVal = 999;
+
             for (let i = 0; i < botHand.length; i++) {
-                if (canBeat(attCard, botHand[i], state.trumpSuit)) { bestCardIdx = i; break; }
+                let c = botHand[i];
+                if (canBeat(attCard, c, state.trumpSuit)) {
+                    let isTr = (c.suit === state.trumpSuit ? 1 : 0);
+                    let score = isTr * 100 + c.value;
+                    if (score < minVal) {
+                        minVal = score;
+                        bestIdx = i;
+                    }
+                }
             }
-            if (bestCardIdx !== -1) { 
-                handlePlayCard(room, defP.id, bestCardIdx); 
-                scheduleBotTurn(room); 
-                return; 
-            } else { 
-                handleTake(room, defP.id); 
-                scheduleBotTurn(room); 
-                return; 
+
+            if (bestIdx !== -1) {
+                handlePlayCard(room, defP.id, bestIdx);
+                scheduleBotTurn(room);
+                return;
+            } else {
+                handleTake(room, defP.id);
+                scheduleBotTurn(room);
+                return;
             }
         }
     }
+
     let activeBot = state.playersInfo.find(p => p.isBot && p.id !== defP.id && state.hands[p.id].length > 0);
     if (activeBot) {
         let botHand = state.hands[activeBot.id];
         if (state.table.length === 0 && activeBot.id === attP.id) {
-            let nonTrumpIdx = botHand.findIndex(c => c.suit !== state.trumpSuit);
-            let cardIdxToPlay = nonTrumpIdx !== -1 ? nonTrumpIdx : 0;
-            handlePlayCard(room, activeBot.id, cardIdxToPlay); 
-            scheduleBotTurn(room); 
+            let nonTrumps = botHand.map((c, idx) => ({c, idx})).filter(o => o.c.suit !== state.trumpSuit);
+            let targetIdx = 0;
+            if (nonTrumps.length > 0) {
+                nonTrumps.sort((a,b) => a.c.value - b.c.value);
+                targetIdx = nonTrumps[0].idx;
+            }
+            handlePlayCard(room, activeBot.id, targetIdx);
+            scheduleBotTurn(room);
             return;
         } else if (state.table.length > 0) {
             let tRanks = getTableRanks(state.table);
             let defHandLen = state.hands[defP.id].length;
             let canAddMore = state.table.length < Math.min(6, defHandLen + countDefendedPairs(state.table));
             if (canAddMore) {
-                let matchIdx = botHand.findIndex(c => tRanks.has(c.rank) && c.suit !== state.trumpSuit);
-                if (matchIdx === -1) matchIdx = botHand.findIndex(c => tRanks.has(c.rank));
-                if (matchIdx !== -1) { 
-                    handlePlayCard(room, activeBot.id, matchIdx); 
-                    scheduleBotTurn(room); 
-                    return; 
+                let matchObj = botHand.map((c, idx) => ({c, idx})).filter(o => tRanks.has(o.c.rank));
+                if (matchObj.length > 0) {
+                    matchObj.sort((a,b) => {
+                        let aTr = a.c.suit === state.trumpSuit ? 1 : 0;
+                        let bTr = b.c.suit === state.trumpSuit ? 1 : 0;
+                        if (aTr !== bTr) return aTr - bTr;
+                        return a.c.value - b.c.value;
+                    });
+                    handlePlayCard(room, activeBot.id, matchObj[0].idx);
+                    scheduleBotTurn(room);
+                    return;
                 }
             }
             if (activeBot.id === attP.id && state.table.length > 0 && state.table.every(p => p.defense !== null)) {
-                if (Math.random() < 0.8 || botHand.length === 0) { 
-                    handleDone(room, activeBot.id); 
-                    scheduleBotTurn(room); 
-                    return; 
+                if (Math.random() < 0.85 || botHand.length === 0) {
+                    handleDone(room, activeBot.id);
+                    scheduleBotTurn(room);
+                    return;
                 }
             }
         }
     }
+
     if (attP.isBot && state.table.length > 0 && state.table.every(p => p.defense !== null)) {
-        handleDone(room, attP.id); 
+        handleDone(room, attP.id);
         scheduleBotTurn(room);
     }
 }

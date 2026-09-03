@@ -62,8 +62,9 @@
         .hand-card-wrap { margin-right: -24px; cursor: pointer; flex-shrink: 0; transition: transform 0.2s; }
         .hand-card-wrap:last-child { margin-right: 0; }
         .hand-card-wrap:hover { margin-right: 10px; z-index: 25; }
-        .top-left-controls { position: absolute; left: 25px; top: 18px; z-index: 10; }
+        .top-left-controls { position: absolute; left: 25px; top: 18px; z-index: 10; display: flex; gap: 8px; }
         .icon-btn { background: rgba(5, 36, 19, 0.7); border: 1px solid rgba(255, 255, 255, 0.15); color: #cbd5e1; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 12px; }
+        .icon-btn:hover { background: rgba(10, 56, 30, 0.9); color: #fff; }
         #game-over-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(4, 20, 12, 0.95); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 250; }
         #game-over-screen h1 { font-family: 'Cinzel', serif; font-size: 42px; color: var(--gold); margin-bottom: 10px; }
         #rematch-timer-text { font-size: 15px; color: #cbd5e1; margin-bottom: 20px; }
@@ -94,6 +95,7 @@
 
     <div class="top-left-controls">
         <button class="icon-btn" onclick="location.reload()">🏠 Меню</button>
+        <button id="music-btn" class="icon-btn" onclick="toggleMusic()">🎵 Музыка: ВКЛ</button>
     </div>
 
     <div id="deck-info">
@@ -137,6 +139,45 @@
     let selectedMaxPlayers = 2;
     let currentRoomCode = null;
     let gameState = null;
+
+    const bgMusic = new Audio('/theme.mp3'); 
+    bgMusic.loop = true;
+    bgMusic.volume = 0.3;
+    let musicEnabled = true;
+    let userInteracted = false;
+
+    document.addEventListener('click', () => {
+        userInteracted = true;
+    }, { once: true });
+
+    function toggleMusic() {
+        musicEnabled = !musicEnabled;
+        const btn = document.getElementById('music-btn');
+        if (musicEnabled) {
+            btn.innerText = "🎵 Музыка: ВКЛ";
+            if (gameState && !gameState.isGameOver) bgMusic.play().catch(() => {});
+        } else {
+            btn.innerText = "🔇 Музыка: ВЫКЛ";
+            bgMusic.pause();
+        }
+    }
+
+    socket.on('play_music', () => {
+        if (!musicEnabled) return;
+        bgMusic.currentTime = 0;
+        if (userInteracted) {
+            bgMusic.play().catch(e => console.log("Ожидание клика для аудио:", e));
+        }
+    });
+
+    socket.on('game_over', () => {
+        bgMusic.pause();
+        bgMusic.currentTime = 0;
+    });
+
+    socket.on('room_expired', () => {
+        bgMusic.pause();
+    });
 
     function selectCount(num) {
         selectedMaxPlayers = num;

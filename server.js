@@ -153,6 +153,7 @@ function initGameState(room) {
         isGameOver: false, winner: null
     };
     room.rematchVotes.clear();
+    io.to(room.id).emit('play_music');
 }
 
 function sortHand(hand, trumpSuit) {
@@ -276,9 +277,10 @@ function checkGameOver(room) {
 }
 
 function scheduleBotTurn(room) {
-    if (!room || !room.state || room.state.isGameOver) return;
-    if (room.botLoopTimeout) clearTimeout(room.botLoopTimeout);
-    room.botLoopTimeout = setTimeout(() => { executeBotTurn(room); }, 1200);
+    if (!room || !room.state || !room.state.isGameOver) {
+        if (room.botLoopTimeout) clearTimeout(room.botLoopTimeout);
+        room.botLoopTimeout = setTimeout(() => { executeBotTurn(room); }, 1200);
+    }
 }
 
 function executeBotTurn(room) {
@@ -364,6 +366,7 @@ function startRematch(room) {
     io.to(room.id).emit('game_restarted'); 
     broadcastState(room); 
     scheduleBotTurn(room);
+    io.to(room.id).emit('play_music');
 }
 
 function broadcastState(room) {

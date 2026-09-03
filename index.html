@@ -165,8 +165,6 @@
             </div>
         </div>
 
-        <div id="table-area"></div>
-
         <div id="player-area">
             <div id="msg-box">Ожидание начала игры...</div>
             <div class="action-bar">
@@ -263,7 +261,6 @@
                 let cardCount = (gameState.hands && gameState.hands[p.id]) ? gameState.hands[p.id].length : 0;
                 let isDef = gameState.defenderIdx === targetPlayerIdx;
                 let isCurrentTurn = gameState.currentThrowerIdx === targetPlayerIdx;
-
                 let bubbleText = "";
                 let bubbleClass = "speech-bubble";
                 if (isDef) {
@@ -274,7 +271,6 @@
                 } else if (gameState.attackerIdx === targetPlayerIdx && (!gameState.table || gameState.table.length === 0)) {
                     bubbleText = "Ходит";
                 }
-
                 let bubbleHTML = bubbleText ? `<div class="${bubbleClass}">${bubbleText}</div>` : '';
                 let backCardsHTML = Array(cardCount).fill(0).map(() => `<img class="card-img-back" src="https://deckofcardsapi.com/static/img/back.png">`).join('');
                 
@@ -320,7 +316,6 @@
             let isDefMe = gameState.defenderIdx === myIdx;
             let isAttMe = gameState.attackerIdx === myIdx;
             let isMyThrowTurn = gameState.currentThrowerIdx === myIdx;
-
             let msg = document.getElementById('msg-box');
             if (msg) {
                 if (isDefMe) {

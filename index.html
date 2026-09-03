@@ -2,212 +2,478 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Подкидной Дурак (с Ботами, Онлайн и Чатом)</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Карточная игра: Дурак Онлайн</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800&family=Montserrat:wght@500;600;700&display=swap');
-        
-        :root { 
-            --felt-bg: #0b4d2b; 
-            --felt-dark: #062e1a; 
-            --gold: #f3c653; 
-            --red: #e63946; 
-            --card-w: 70px; 
-            --card-h: 102px;
+        :root {
+            --bg-color: #121814;
+            --felt-green: #1b382b;
+            --felt-dark: #12261d;
+            --gold: #f3c653;
+            --gold-hover: #e0b23d;
+            --panel-bg: rgba(18, 38, 29, 0.92);
+            --text-light: #e0e8e3;
+            --accent-red: #e63946;
         }
 
-        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
-        body { 
-            margin: 0; padding: 0; background: #04180e; 
-            font-family: 'Montserrat', sans-serif; color: #fff; 
-            display: flex; justify-content: center; align-items: center; 
-            min-height: 100vh; overflow: hidden; 
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
         }
 
-        #game-container { 
-            width: 100vw; height: 100vh; max-width: 1200px; max-height: 800px;
-            background: radial-gradient(circle at 50% 40%, #156b3e 0%, var(--felt-bg) 50%, var(--felt-dark) 100%);
-            position: relative; display: flex; flex-direction: column; justify-content: space-between; 
-            padding: 10px; border: 4px solid #052917; box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-light);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
 
-        @media (min-width: 768px) {
-            :root { --card-w: 80px; --card-h: 116px; }
-            #game-container { border-radius: 20px; border-width: 8px; padding: 15px 25px; height: 85vh; }
+        button {
+            cursor: pointer;
+            font-family: inherit;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            transition: all 0.2s ease;
         }
 
-        #main-menu { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(4, 20, 12, 0.97); backdrop-filter: blur(8px); 
-            display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 300; padding: 15px;
+        #main-menu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, #1e4231 0%, #0d1f17 100%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
 
-        .menu-logo { font-family: 'Cinzel', serif; font-size: 38px; font-weight: 800; color: var(--gold); margin-bottom: 2px; text-shadow: 0 4px 20px rgba(243,198,83,0.4); }
-        .menu-subtitle { color: #8da396; font-size: 12px; margin-bottom: 15px; }
-        .menu-panel { background: rgba(10, 42, 25, 0.8); border: 1px solid rgba(243, 198, 83, 0.2); padding: 15px 20px; border-radius: 14px; display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 340px; }
+        .menu-card {
+            background: var(--panel-bg);
+            border: 2px solid var(--gold);
+            border-radius: 12px;
+            padding: 30px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            text-align: center;
+        }
 
-        .player-count-selector { display: flex; justify-content: space-between; gap: 6px; }
-        .count-btn { flex: 1; padding: 7px 0; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-weight: 700; cursor: pointer; font-size: 12px; }
-        .count-btn.active { background: var(--gold); color: #111; border-color: var(--gold); }
+        .menu-card h1 {
+            color: var(--gold);
+            margin-bottom: 20px;
+            font-size: 28px;
+            letter-spacing: 1px;
+        }
 
-        .btn { font-family: 'Montserrat', sans-serif; padding: 10px 14px; border: none; border-radius: 10px; font-weight: 700; font-size: 12px; cursor: pointer; color: #fff; display: flex; justify-content: center; align-items: center; gap: 6px; width: 100%; transition: transform 0.1s; }
-        .btn:active { transform: scale(0.98); }
-        .btn-gold { background: linear-gradient(135deg, #f3c653 0%, #cca331 100%); color: #111; }
-        .btn-primary { background: linear-gradient(135deg, #1d976c 0%, #116949 100%); }
-        .btn-bot { background: linear-gradient(135deg, #3a86ef 0%, #205295 100%); }
-        .btn-danger { background: linear-gradient(135deg, #e63946 0%, #b71c28 100%); }
-        .btn:disabled { background: #2a3830 !important; color: #5d7367 !important; cursor: not-allowed; }
+        .section-title {
+            font-size: 13px;
+            color: #8da396;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
-        .menu-divider { display: flex; align-items: center; text-align: center; color: #698275; font-size: 10px; text-transform: uppercase; margin: 2px 0; }
-        .menu-divider::before, .menu-divider::after { content: ''; flex: 1; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .menu-divider::before { margin-right: .6em; } .menu-divider::after { margin-left: .6em; }
+        .player-counts {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
 
-        .room-row { display: flex; gap: 6px; }
-        .room-input { flex: 1; background: rgba(0, 0, 0, 0.3); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 8px; color: var(--gold); font-size: 12px; text-align: center; font-weight: 700; outline: none; text-transform: uppercase; }
-        #menu-status { font-size: 11px; color: #f3c653; text-align: center; min-height: 14px; }
+        .count-btn {
+            flex: 1;
+            padding: 10px 0;
+            background: #234737;
+            color: var(--text-light);
+            border: 1px solid #34614c;
+        }
 
-        .top-left-controls { position: absolute; left: 10px; top: 10px; z-index: 10; display: flex; gap: 5px; }
-        .icon-btn { background: rgba(5, 36, 19, 0.8); border: 1px solid rgba(255, 255, 255, 0.15); color: #cbd5e1; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 11px; }
+        .count-btn.active {
+            background: var(--gold);
+            color: #121814;
+            border-color: var(--gold);
+        }
 
-        #deck-info { position: absolute; right: 10px; top: 10px; display: flex; gap: 8px; align-items: center; background: rgba(5, 36, 19, 0.8); padding: 5px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1); }
-        .mini-card-stack { width: 30px; height: 44px; background: radial-gradient(circle, #2a5298 0%, #1e3c72 100%); border: 1px solid #fff; border-radius: 3px; position: relative; }
-        .deck-text { font-size: 11px; color: #cbd5e1; display: flex; flex-direction: column; }
-        .deck-text b { color: var(--gold); }
+        .menu-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--gold);
+            color: #121814;
+            font-size: 15px;
+            margin-bottom: 12px;
+        }
+        .menu-btn:hover { background: var(--gold-hover); }
 
-        .opponents-row { display: flex; justify-content: center; gap: 8px; width: 100%; min-height: 70px; align-items: center; margin-top: 36px; padding: 0 5px; flex-wrap: wrap; }
-        .opponent-box { background: rgba(5, 36, 19, 0.7); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 110px; }
-        .opponent-box.active-turn { border-color: var(--gold); box-shadow: 0 0 8px rgba(243,198,83,0.4); }
-        .opp-name { font-size: 10px; font-weight: 700; color: #cbd5e1; }
-        .opp-cards { display: flex; }
-        .mini-card { width: 18px; height: 28px; background: radial-gradient(circle, #2a5298 0%, #1e3c72 100%); border: 1px solid #fff; border-radius: 2px; margin-right: -8px; }
-        .mini-card:last-child { margin-right: 0; }
+        .menu-btn-secondary {
+            background: #234737;
+            color: var(--text-light);
+            border: 1px solid #34614c;
+        }
+        .menu-btn-secondary:hover { background: #2b5643; }
 
-        #middle-zone { flex: 1; background: rgba(4, 25, 14, 0.5); border-radius: 12px; border: 1px dashed rgba(255, 255, 255, 0.12); display: flex; align-items: center; padding: 8px 15px; position: relative; margin: 6px 0; overflow-x: auto; max-height: 150px; }
-        .zone-title { position: absolute; top: -8px; left: 12px; background: #093820; padding: 1px 8px; border-radius: 4px; font-size: 9px; color: var(--gold); font-weight: 700; border: 1px solid rgba(243,198,83,0.2); }
+        .join-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
 
-        .card { width: var(--card-w); height: var(--card-h); background: linear-gradient(135deg, #ffffff 0%, #f3f3ee 100%); border-radius: 6px; box-shadow: -2px 3px 8px rgba(0,0,0,0.3); position: relative; cursor: pointer; display: flex; flex-direction: column; justify-content: space-between; padding: 4px 6px; font-weight: 700; flex-shrink: 0; }
-        .card.red { color: #d62828; } .card.black { color: #1b263b; }
-        .card-rank { font-size: 12px; font-family: 'Cinzel', serif; }
-        .card-suit { font-size: 10px; }
-        .card-center-suit { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 22px; opacity: 0.9; }
+        .join-row input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #34614c;
+            background: #12261d;
+            color: white;
+            text-align: center;
+            font-size: 16px;
+            text-transform: uppercase;
+        }
+        .join-row input:focus { outline: 1px solid var(--gold); }
 
-        .table-pair { position: relative; width: calc(var(--card-w) + 16px); height: var(--card-h); flex-shrink: 0; }
-        .table-pair .card:first-child { position: absolute; left: 0; top: 0; }
-        .table-pair .card:nth-child(2) { position: absolute; left: 14px; top: 10px; z-index: 5; }
+        #menu-status {
+            font-size: 13px;
+            color: #f3c653;
+            min-height: 18px;
+            margin-top: 10px;
+        }
 
-        #control-panel { display: flex; justify-content: space-between; align-items: center; padding: 4px 5px; gap: 8px; }
-        #message-box { font-size: 11px; color: var(--gold); font-weight: 600; background: rgba(0,0,0,0.3); padding: 6px 10px; border-radius: 6px; border-left: 3px solid var(--gold); flex: 1; text-align: center; }
-        #message-box.error { color: #ff6b6b; border-left-color: #ff6b6b; }
-        .actions { display: flex; gap: 6px; }
+        #game-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background: radial-gradient(circle, var(--felt-green) 0%, var(--felt-dark) 100%);
+            position: relative;
+            padding: 10px;
+            height: 100vh;
+        }
 
-        #player-zone { min-height: 120px; display: flex; flex-direction: column; align-items: center; position: relative; padding-top: 10px; }
-        .hand-cards { display: flex; justify-content: center; align-items: flex-end; max-width: 100%; overflow-x: auto; padding: 5px; }
-        .hand-card-wrap { cursor: pointer; flex-shrink: 0; transition: transform 0.2s; position: relative; }
-        .hand-card-wrap:hover { transform: translateY(-12px); z-index: 100; }
+        #opponents-container {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            min-height: 80px;
+        }
 
-        #chat-toggle-btn { position: absolute; right: 10px; bottom: 135px; z-index: 150; background: #116949; border: 1px solid var(--gold); color: var(--gold); padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
-        #chat-panel { position: absolute; right: 10px; bottom: 175px; width: 280px; height: 220px; background: rgba(4, 20, 12, 0.95); border: 1px solid rgba(243,198,83,0.3); border-radius: 12px; z-index: 160; display: none; flex-direction: column; padding: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); backdrop-filter: blur(6px); }
-        #chat-messages { flex: 1; overflow-y: auto; font-size: 11px; display: flex; flex-direction: column; gap: 4px; padding-right: 4px; margin-bottom: 6px; }
-        .chat-msg { background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 6px; word-break: break-word; line-height: 1.3; }
-        .chat-msg b { color: var(--gold); }
-        .chat-input-row { display: flex; gap: 4px; }
-        .chat-input { flex: 1; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; padding: 6px 8px; color: #fff; font-size: 11px; outline: none; }
-        .chat-send { background: var(--gold); color: #111; border: none; padding: 0 10px; border-radius: 6px; font-weight: 700; font-size: 11px; cursor: pointer; }
+        .opponent-box {
+            background: rgba(10, 24, 18, 0.7);
+            border: 1px solid #284c3b;
+            border-radius: 8px;
+            padding: 8px 12px;
+            min-width: 130px;
+            text-align: center;
+        }
+        .opponent-box.active-turn {
+            border-color: var(--gold);
+            box-shadow: 0 0 10px rgba(243, 198, 83, 0.3);
+        }
+        .opp-name {
+            font-size: 12px;
+            margin-bottom: 5px;
+            color: #b2c9bd;
+        }
+        .opp-cards {
+            display: flex;
+            gap: 2px;
+            justify-content: center;
+        }
+        .mini-card {
+            width: 14px;
+            height: 20px;
+            background: #b93838;
+            border: 1px solid #fff;
+            border-radius: 2px;
+        }
 
-        #game-over-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(4, 20, 12, 0.97); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 250; padding: 15px; }
-        #game-over-screen h1 { font-family: 'Cinzel', serif; font-size: 30px; color: var(--gold); margin-bottom: 6px; }
-        #rematch-timer-text { font-size: 13px; color: #cbd5e1; margin-bottom: 15px; text-align: center; }
+        .center-table-area {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex: 1;
+            margin: 5px 0;
+        }
+
+        .deck-area {
+            position: relative;
+            width: 70px;
+            height: 95px;
+            background: #a83232;
+            border: 2px solid #fff;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 2px 4px 10px rgba(0,0,0,0.4);
+        }
+        #deck-count {
+            font-size: 11px;
+            background: rgba(0,0,0,0.6);
+            padding: 2px 4px;
+            border-radius: 4px;
+            margin-top: 25px;
+        }
+
+        #table-pairs-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            max-width: 600px;
+            min-height: 100px;
+            background: rgba(0,0,0,0.15);
+            border-radius: 10px;
+            padding: 10px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .table-pair {
+            position: relative;
+            width: 75px;
+            height: 105px;
+        }
+        .table-pair .card:nth-child(2) {
+            position: absolute;
+            top: 15px;
+            left: 12px;
+        }
+
+        .card {
+            width: 70px;
+            height: 98px;
+            background: #fff;
+            border-radius: 6px;
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            transition: transform 0.15s;
+        }
+        .card.red { color: #d32f2f; }
+        .card.black { color: #212121; }
+        .card-center-suit {
+            font-size: 22px;
+            text-align: center;
+        }
+
+        .player-zone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #player-cards-container {
+            display: flex;
+            justify-content: center;
+            min-height: 105px;
+            perspective: 500px;
+        }
+
+        .hand-card-wrap {
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        .hand-card-wrap:hover {
+            transform: translateY(-15px);
+        }
+
+        .action-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 5px;
+        }
+        .action-btn {
+            padding: 8px 16px;
+            background: #234737;
+            color: white;
+            border: 1px solid #3c7058;
+            font-size: 13px;
+        }
+        .action-btn:disabled {
+            opacity: 0.4;
+            cursor: default;
+        }
+        .action-btn.primary {
+            background: var(--gold);
+            color: #121814;
+            border: none;
+        }
+
+        #message-box {
+            font-size: 13px;
+            color: var(--gold);
+            min-height: 18px;
+            text-align: center;
+        }
+        #message-box.error { color: var(--accent-red); }
+
+        .top-utility-bar {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+        }
+        .util-btn {
+            background: rgba(18, 38, 29, 0.8);
+            border: 1px solid var(--gold);
+            color: var(--text-light);
+            padding: 5px 10px;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+
+        #chat-panel {
+            position: fixed;
+            bottom: 60px;
+            right: 15px;
+            width: 280px;
+            height: 220px;
+            background: rgba(14, 29, 22, 0.95);
+            border: 1px solid var(--gold);
+            border-radius: 8px;
+            display: none;
+            flex-direction: column;
+            z-index: 50;
+        }
+        #chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px;
+            font-size: 11px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .chat-msg { word-break: break-all; }
+        .chat-input-area {
+            display: flex;
+            border-top: 1px solid #234737;
+        }
+        #chat-input-field {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 8px;
+            color: white;
+            font-size: 11px;
+        }
+        #chat-input-field:focus { outline: none; }
+        .chat-send-btn {
+            background: var(--gold);
+            color: #121814;
+            padding: 0 12px;
+            font-size: 11px;
+            border-radius: 0;
+        }
+
+        #game-over-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 200;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        #winner-title {
+            font-size: 32px;
+            color: var(--gold);
+        }
     </style>
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 
-    <div id="game-container">
-        <!-- Верхняя левая панель управления -->
-        <div class="top-left-controls">
-            <button class="icon-btn" onclick="location.reload()">🏠 Меню</button>
-            <button id="music-btn" class="icon-btn" onclick="toggleMusic()">🎵 Музыка</button>
-        </div>
-
-        <!-- Информация о колоде и козыре -->
-        <div id="deck-info">
-            <div style="position:relative;">
-                <div class="mini-card-stack"></div>
-                <div id="trump-container"></div>
-            </div>
-            <div class="deck-text">
-                <span id="trump-label">Козырь: -</span>
-                <span id="deck-count">В колоде: <b>36</b></span>
-            </div>
-        </div>
-
-        <!-- Ряд соперников -->
-        <div class="opponents-row" id="opponents-container"></div>
-
-        <!-- Игровая зона (Стол) -->
-        <div id="middle-zone">
-            <div class="zone-title">Игровой стол</div>
-            <div style="display: flex; gap: 12px; overflow-x: auto; width: 100%; align-items: center;" id="table-pairs-container">
-                <div style="color: #698275; font-size: 11px; margin: auto;">Ожидание...</div>
-            </div>
-        </div>
-
-        <!-- Панель управления действиями игрока -->
-        <div id="control-panel">
-            <div id="message-box">Ожидание начала игры...</div>
-            <div class="actions">
-                <button id="btn-take" class="btn btn-danger" onclick="sendAction('take')" disabled>БЕРУ</button>
-                <button id="btn-done" class="btn btn-primary" onclick="sendAction('done')" disabled>БИТО</button>
-            </div>
-        </div>
-
-        <!-- Зона карт игрока -->
-        <div id="player-zone">
-            <div class="zone-title" style="top: -2px;">Ваши карты</div>
-            <div class="hand-cards" id="player-cards-container"></div>
-        </div>
-
-        <!-- Кнопка чата -->
-        <button id="chat-toggle-btn" onclick="toggleChat()">💬 Чат</button>
-
-        <!-- Окно чата -->
-        <div id="chat-panel">
-            <div style="font-size: 11px; font-weight: 700; color: var(--gold); margin-bottom: 4px; text-align: center;">ИГРОВОЙ ЧАТ</div>
-            <div id="chat-messages"></div>
-            <div class="chat-input-row">
-                <input type="text" id="chat-input-field" class="chat-input" placeholder="Сообщение..." onkeydown="if(event.key==='Enter') sendChatMessage()">
-                <button class="chat-send" onclick="sendChatMessage()">ОТП</button>
-            </div>
-        </div>
+    <div class="top-utility-bar">
+        <button id="music-btn" class="util-btn" onclick="toggleMusic()">🎵 Музыка</button>
+        <button id="chat-toggle-btn" class="util-btn" onclick="toggleChat()">💬 Чат</button>
     </div>
 
-    <!-- Главное Меню -->
     <div id="main-menu">
-        <div class="menu-logo">ДУРАК</div>
-        <div class="menu-subtitle">Онлайн и Игра с Ботами</div>
-        <div class="menu-panel">
-            <div style="font-size: 11px; font-weight: 700; color: #cbd5e1; text-align: center;">Количество игроков:</div>
-            <div class="player-count-selector">
+        <div class="menu-card">
+            <h1>ДУРАК ОНЛАЙН</h1>
+            
+            <div class="section-title">Количество игроков</div>
+            <div class="player-counts">
                 <button class="count-btn active" onclick="selectCount(2)">2</button>
                 <button class="count-btn" onclick="selectCount(3)">3</button>
                 <button class="count-btn" onclick="selectCount(4)">4</button>
             </div>
-            <button class="btn btn-bot" onclick="playWithBots()">🤖 Играть с ботами</button>
-            <div class="menu-divider">или по сети</div>
-            <button class="btn btn-gold" onclick="createRoom()">✨ Создать комнату</button>
-            <div class="room-row">
-                <input type="text" id="room-code-input" class="room-input" placeholder="КОД КОМНАТЫ" maxlength="6">
-                <button class="btn btn-primary" style="width: auto; padding: 0 16px;" onclick="joinRoom()">Войти</button>
+
+            <button class="menu-btn" onclick="createRoom()">Создать комнату</button>
+            
+            <div class="join-row">
+                <input type="text" id="room-code-input" placeholder="КОД КОМНАТЫ" maxlength="6">
+                <button class="menu-btn menu-btn-secondary" style="width: auto; margin-bottom: 0;" onclick="joinRoom()">Войти</button>
             </div>
+
+            <button class="menu-btn menu-btn-secondary" onclick="playWithBots()">Играть с ботами</button>
+            
             <div id="menu-status"></div>
         </div>
     </div>
 
-    <!-- Экран окончания игры -->
+    <div id="game-container">
+        <div id="opponents-container"></div>
+
+        <div class="center-table-area">
+            <div class="deck-area">
+                <div id="trump-container" style="position: absolute; top:0; left:0;"></div>
+                <div id="deck-count">Колода: <b>0</b></div>
+            </div>
+            <div id="table-pairs-container">
+                <div style="color: #698275; font-size: 11px; margin: auto;">Ожидание...</div>
+            </div>
+        </div>
+
+        <div class="player-zone">
+            <div id="message-box"></div>
+            <div class="action-controls">
+                <button id="btn-take" class="action-btn" onclick="sendAction('take')" disabled>Беру</button>
+                <button id="btn-done" class="action-btn primary" onclick="sendAction('done')" disabled>Бито</button>
+            </div>
+            <div id="player-cards-container"></div>
+            <div id="trump-label" style="font-size: 11px; color: #8da396; margin-bottom: 2px;">Козырь: -</div>
+        </div>
+    </div>
+
+    <div id="chat-panel">
+        <div id="chat-messages"></div>
+        <div class="chat-input-area">
+            <input type="text" id="chat-input-field" placeholder="Сообщение..." onkeydown="if(event.key==='Enter') sendChatMessage()">
+            <button class="chat-send-btn" onclick="sendChatMessage()">Отпр</button>
+        </div>
+    </div>
+
     <div id="game-over-screen">
-        <h1 id="winner-title">ИГРА ОКОНЧЕНА</h1>
-        <div id="rematch-timer-text">Новая игра через: <span id="timer-sec">15</span> сек. (Голосов: <span id="votes-count">0/0</span>)</div>
-        <button id="btn-rematch" class="btn btn-gold" style="max-width: 260px;" onclick="voteRematch()">🔄 Играть снова за столом</button>
+        <div id="winner-title">ИГРА ОКОНЧЕНА</div>
+        <div style="font-size: 13px; color: #8da396;">Голосов за реванш: <span id="votes-count">0/2</span> (Осталось: <span id="timer-sec">15</span>с)</div>
+        <button id="btn-rematch" class="menu-btn" style="max-width: 250px;" onclick="voteRematch()">🔄 Играть снова за столом</button>
     </div>
 
     <script>
@@ -216,7 +482,7 @@
         let currentRoomCode = null;
         let gameState = null;
         
-        const bgMusic = new Audio('https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg');
+        const bgMusic = new Audio('https://google.com');
         bgMusic.loop = true;
         bgMusic.volume = 0.3;
         let musicEnabled = true;
@@ -258,7 +524,8 @@
             const msgContainer = document.getElementById('chat-messages');
             const isMe = data.senderId === socket.id;
             const nameColor = isMe ? "#f3c653" : "#3a86ef";
-            msgContainer.innerHTML += `<div class="chat-msg"><b style="color: \${nameColor};">\${data.senderName}:</b> \${escapeHtml(data.message)}</div>`;
+            
+            msgContainer.innerHTML += `<div class="chat-msg"><b style="color: ${nameColor};">${data.senderName}:</b> ${escapeHtml(data.message)}</div>`;
             msgContainer.scrollTop = msgContainer.scrollHeight;
             
             const chatBtn = document.getElementById('chat-toggle-btn');
@@ -277,7 +544,15 @@
             bgMusic.currentTime = 0;
             if (userInteracted) bgMusic.play().catch(() => {});
         });
-        socket.on('game_over', () => { bgMusic.pause(); bgMusic.currentTime = 0; });
+        socket.on('game_over', (data) => { 
+            bgMusic.pause(); 
+            bgMusic.currentTime = 0;
+            document.getElementById('game-over-screen').style.display = 'flex';
+            let isWinner = data.winner === socket.id;
+            document.getElementById('winner-title').innerText = isWinner ? "ПОБЕДА!" : (data.winner ? "ВЫ ПРОИГРАЛИ" : "НИЧЬЯ!");
+            document.getElementById('btn-rematch').disabled = false;
+            document.getElementById('btn-rematch').innerText = "🔄 Играть снова за столом";
+        });
         socket.on('room_expired', () => { bgMusic.pause(); });
 
         function selectCount(num) {
@@ -299,13 +574,13 @@
         }
 
         function playWithBots() { 
-            setMenuStatus("Запуск..."); 
-            socket.emit('play_with_bots', selectedMaxPlayers); 
+            setMenuStatus("Запуск...");
+            socket.emit('play_with_bots', selectedMaxPlayers);
         }
 
         function createRoom() { 
-            setMenuStatus("Создание..."); 
-            socket.emit('create_room', selectedMaxPlayers); 
+            setMenuStatus("Создание...");
+            socket.emit('create_room', selectedMaxPlayers);
         }
 
         function joinRoom() {
@@ -317,15 +592,15 @@
         }
 
         socket.on('room_created', (data) => { 
-            currentRoomCode = data.code; 
-            document.getElementById('main-menu').style.display = 'none'; 
-            showMessage(`Комната: \${data.code}. Ожидание (1/\${data.maxPlayers})`); 
+            currentRoomCode = data.code;
+            document.getElementById('main-menu').style.display = 'none';
+            showMessage(`Комната: ${data.code}. Ожидание (1/${data.maxPlayers})`);
         });
 
         socket.on('lobby_update', (data) => { 
-            currentRoomCode = data.code; 
-            document.getElementById('main-menu').style.display = 'none'; 
-            showMessage(`Комната: \${data.code}. Игроков: \${data.current}/\${data.max}`); 
+            currentRoomCode = data.code;
+            document.getElementById('main-menu').style.display = 'none';
+            showMessage(`Комната: ${data.code}. Игроков: ${data.current}/${data.max}`);
         });
 
         socket.on('error_msg', (msg) => { setMenuStatus(msg); showMessage(msg, true); });
@@ -340,16 +615,8 @@
             render();
         });
 
-        socket.on('game_over_data', (data) => {
-            document.getElementById('game-over-screen').style.display = 'flex';
-            let isWinner = data.winner === socket.id;
-            document.getElementById('winner-title').innerText = isWinner ? "ПОБЕДА!" : (data.winner ? "ВЫ ПРОИГРАЛИ" : "НИЧЬЯ!");
-            document.getElementById('btn-rematch').disabled = false;
-            document.getElementById('btn-rematch').innerText = "🔄 Играть снова за столом";
-        });
-
         socket.on('rematch_timer', (sec) => { document.getElementById('timer-sec').innerText = sec; });
-        socket.on('rematch_voted', (data) => { document.getElementById('votes-count').innerText = `\${data.votesCount}/\${data.totalNeeded}`; });
+        socket.on('rematch_voted', (data) => { document.getElementById('votes-count').innerText = `${data.votesCount}/${data.totalNeeded}`; });
         
         socket.on('game_restarted', () => {
             document.getElementById('game-over-screen').style.display = 'none';
@@ -369,10 +636,10 @@
         function renderCardHTML(card) {
             if (!card || !card.rank) return '';
             let colorClass = isRed(card.suit) ? "red" : "black";
-            return `<div class="card \${colorClass}">
-              <div><div class="card-rank">\${card.rank}</div><div class="card-suit">\${card.suit}</div></div>
-              <div class="card-center-suit">\${card.suit}</div>
-              <div style="transform: rotate(180deg); text-align: right;"><div class="card-rank" style="text-align:right;">\${card.rank}</div><div class="card-suit" style="text-align:right;">\${card.suit}</div></div>
+            return `<div class="card ${colorClass}">
+              <div><div class="card-rank">${card.rank}</div><div class="card-suit">${card.suit}</div></div>
+              <div class="card-center-suit">${card.suit}</div>
+              <div style="transform: rotate(180deg); text-align: right;"><div class="card-rank" style="text-align:right;">${card.rank}</div><div class="card-suit" style="text-align:right;">${card.suit}</div></div>
             </div>`;
         }
 
@@ -392,21 +659,21 @@
                     let isDef = playersInfo[gameState.defenderIdx] && playersInfo[gameState.defenderIdx].id === p.id;
                     let roleText = isAtt ? "⚔️ Атака" : (isDef ? "🛡️ Защита" : "⏳ Ждет");
                     let miniCardsHTML = Array(count).fill(0).map(() => `<div class="mini-card"></div>`).join('');
-                    oppContainer.innerHTML += `<div class="opponent-box \${isAtt || isDef ? 'active-turn' : ''}"><div class="opp-name">\${p.name} (\${count}) • \${roleText}</div><div class="opp-cards">\${miniCardsHTML}</div></div>`;
+                    oppContainer.innerHTML += `<div class="opponent-box ${isAtt || isDef ? 'active-turn' : ''}"><div class="opp-name">${p.name} (${count}) • ${roleText}</div><div class="opp-cards">${miniCardsHTML}</div></div>`;
                 });
             }
 
             let deckCountEl = document.getElementById('deck-count');
-            if (deckCountEl) deckCountEl.innerHTML = `В колоде: <b>\${(gameState.deck || []).length}</b>`;
+            if (deckCountEl) deckCountEl.innerHTML = `В колоде: <b>${(gameState.deck || []).length}</b>`;
 
             let trumpCont = document.getElementById('trump-container');
             let trumpLabel = document.getElementById('trump-label');
             if (gameState.trumpCard && gameState.trumpCard.rank) {
-                if (trumpCont) trumpCont.innerHTML = `<div style="position:absolute; top:-16px; left:-2px; transform: rotate(90deg) scale(0.28); transform-origin: top left;">\${renderCardHTML(gameState.trumpCard)}</div>`;
-                if (trumpLabel) trumpLabel.innerHTML = `Козырь: <b>\${gameState.trumpCard.rank}\${gameState.trumpCard.suit}</b>`;
+                if (trumpCont) trumpCont.innerHTML = `<div style="position:absolute; top:-16px; left:-2px; transform: rotate(90deg) scale(0.28); transform-origin: top left;">${renderCardHTML(gameState.trumpCard)}</div>`;
+                if (trumpLabel) trumpLabel.innerHTML = `Козырь: <b>${gameState.trumpCard.rank}${gameState.trumpCard.suit}</b>`;
             } else {
                 if (trumpCont) trumpCont.innerHTML = "";
-                if (trumpLabel) trumpLabel.innerHTML = `Козырь: <b>\${gameState.trumpSuit || '-'}</b>`;
+                if (trumpLabel) trumpLabel.innerHTML = `Козырь: <b>${gameState.trumpSuit || '-'}</b>`;
             }
 
             let tablePairsCont = document.getElementById('table-pairs-container');
@@ -414,7 +681,7 @@
                 if (!gameState.table || gameState.table.length === 0) {
                     tablePairsCont.innerHTML = `<div style="color: #698275; font-size: 11px; margin: auto;">Ожидание...</div>`;
                 } else {
-                    tablePairsCont.innerHTML = gameState.table.map(p => `<div class="table-pair">\${renderCardHTML(p.attack)}\${p.defense ? renderCardHTML(p.defense) : ''}</div>`).join('');
+                    tablePairsCont.innerHTML = gameState.table.map(p => `<div class="table-pair">${renderCardHTML(p.attack)}${p.defense ? renderCardHTML(p.defense) : ''}</div>`).join('');
                 }
             }
 
@@ -425,7 +692,7 @@
                 let availableWidth = Math.min(window.innerWidth - 40, 750);
                 let dynamicMargin = cardCount > 1 ? Math.min(-15, Math.floor((availableWidth - (cardCount * cardW)) / (cardCount - 1))) : 0;
                 if (dynamicMargin > 5) dynamicMargin = 5;
-                handContainer.innerHTML = myHand.map((card, idx) => `<div class="hand-card-wrap" style="margin-right: \${idx === cardCount - 1 ? 0 : dynamicMargin}px; z-index: \${idx};" onclick="playCard(\${idx})"> \${renderCardHTML(card)} </div>`).join('');
+                handContainer.innerHTML = myHand.map((card, idx) => `<div class="hand-card-wrap" style="margin-right: ${idx === cardCount - 1 ? 0 : dynamicMargin}px; z-index: ${idx};" onclick="playCard(${idx})"> ${renderCardHTML(card)} </div>`).join('');
             }
 
             let isAttacker = playersInfo[gameState.attackerIdx] && playersInfo[gameState.attackerIdx].id === myId;

@@ -168,9 +168,9 @@
             <div id="msg-box">Ожидание начала игры...</div>
             <div class="action-bar">
                 <button id="btn-take" class="action-btn btn-take" onclick="sendAction('take')">БЕРУ</button>
-                <button id="btn-done" class="action-btn btn-done" onclick="sendAction('pass')">ПАС / БИТО</button>
+                <button id="btn-done" class="action-btn btn-done" onclick="sendAction('pass')">ПАС</button>
             </div>
-            <div id="my-cards-container" class="my-hand"></div>
+            <div class="my-hand" id="my-cards-container"></div>
         </div>
     </div>
 
@@ -249,9 +249,9 @@
                 let cardCount = (gameState.hands[p.id] || []).length;
                 let isAtt = gameState.attackerIdx === targetPlayerIdx;
                 let isDef = gameState.defenderIdx === targetPlayerIdx;
-                let isSubTurn = gameState.turnSubIdx === targetPlayerIdx && !isDef;
+                let isSubTurn = gameState.turnSubIdx === targetPlayerIdx;
                 
-                let bubbleText = isAtt && gameState.table.length === 0 ? "Хожу" : (isDef ? "Кроюсь" : (isSubTurn ? "Подкидываю" : ""));
+                let bubbleText = isSubTurn ? "Ходит..." : (isDef ? "Кроюсь" : (isAtt ? "Атака" : ""));
                 let bubbleHTML = bubbleText ? `<div class="speech-bubble">${bubbleText}</div>` : '';
                 let backCardsHTML = Array(cardCount).fill(0).map(() => `<img class="card-img-back" src="https://deckofcardsapi.com/static/img/back.png">`).join('');
                 
@@ -266,7 +266,7 @@
                 tu.style.display = 'block';
             } else { tu.style.display = 'none'; }
 
-            if (gameState.deck.length === 0) {
+            if(gameState.deck.length === 0) {
                 document.getElementById('deck-top-card').style.display = 'none';
             } else {
                 document.getElementById('deck-top-card').style.display = 'block';
@@ -288,20 +288,18 @@
             let msg = document.getElementById('msg-box');
 
             if (isDefMe) {
-                msg.innerText = "Вы защищаетесь!";
+                let uncovered = gameState.table.some(p => p.defense === null);
+                msg.innerText = uncovered ? "Вы защищаетесь!" : "Соперник думает / подкидывает...";
             } else if (isMyTurnSub) {
-                msg.innerText = "Ваша очередь ходить / подкидывать!";
+                msg.innerText = gameState.table.length === 0 ? "Ваш ход (Атака)!" : "Ваша очередь подкидывать (можно несколько карт)!";
             } else {
                 let currentSubPlayer = gameState.playersInfo[gameState.turnSubIdx];
                 msg.innerText = `Ходит / подкидывает: ${currentSubPlayer ? currentSubPlayer.name : '...'}`;
             }
 
-            let allCovered = gameState.table.length > 0 && gameState.table.every(p => p.defense !== null);
             document.getElementById('btn-take').disabled = !isDefMe || gameState.table.length === 0;
-
-            let canPass = gameState.table.length > 0 && !isDefMe;
+            let canPass = gameState.table.length > 0 && isMyTurnSub;
             document.getElementById('btn-done').disabled = !canPass;
-            document.getElementById('btn-done').innerText = allCovered ? "БИТО (Хватит)" : "ПАС";
         }
 
         function playCard(idx) { socket.emit('player_action', { roomCode: currentRoomCode, action: 'play_card', cardIdx: idx }); }

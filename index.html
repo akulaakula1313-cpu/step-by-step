@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Карточная игра «Дурак»</title>
-    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4/dist/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.7.2/dist/socket.io.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
 
@@ -136,7 +136,7 @@
 
         #player-area { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); width: 100%; max-width: 850px; display: flex; flex-direction: column; align-items: center; z-index: 25; }
         .my-hand { display: flex; justify-content: center; align-items: flex-end; margin-top: 6px; }
-        .my-card-wrap { cursor: pointer; transition: 0.15s; margin-left: -28px; }
+        .my-card-wrap { cursor: pointer; transition: 0.15s; margin-left: -28px; position: relative; }
         .my-card-wrap:first-child { margin-left: 0; }
         .my-card-wrap:hover { transform: translateY(-16px); z-index: 100; }
 
@@ -175,12 +175,12 @@
                         <div class="p-opt-lbl">Вчетвером</div>
                     </div>
                 </div>
-                <button class="btn-start" style="background:#2ecc71; color:#fff;" onclick="playWithBots()">🤖 Играть с ботами</button>
-                <button class="btn-start" onclick="createRoom()">✨ Создать комнату</button>
+                <button class="btn-start" onclick="playWithBots()">🤖 Играть с ботами</button>
                 <div class="menu-divider"></div>
+                <button class="btn-start" style="background:#2ecc71; color:#fff;" onclick="createRoom()">✨ Создать комнату</button>
                 <div class="room-join-row">
                     <input type="text" id="room-code" class="room-input" placeholder="Код комнаты" maxlength="6">
-                    <button class="btn-start" style="width: auto; padding: 10px 20px;" onclick="joinRoom()">Войти</button>
+                    <button class="btn-start" style="width: auto; padding: 0 20px;" onclick="joinRoom()">Войти</button>
                 </div>
             </div>
         </div>
@@ -206,14 +206,12 @@
             </div>
         </div>
 
-        <div id="table-area"></div>
-
         <div id="player-area">
             <div id="msg-box">Ожидание начала игры...</div>
             <div class="action-bar">
-                <button id="btn-take" class="action-btn btn-take" style="display:none;" onclick="sendAction('take')">БЕРУ</button>
-                <button id="btn-pass" class="action-btn btn-pass" style="display:none;" onclick="sendAction('pass')">ПАС</button>
-                <button id="btn-done" class="action-btn btn-done" style="display:none;" onclick="sendAction('done')">БИТО</button>
+                <button id="btn-take" class="action-btn btn-take" onclick="sendAction('take')" style="display:none;">БЕРУ</button>
+                <button id="btn-pass" class="action-btn btn-pass" onclick="sendAction('pass')" style="display:none;">ПАС</button>
+                <button id="btn-done" class="action-btn btn-done" onclick="sendAction('done')" style="display:none;">БИТО</button>
             </div>
             <div id="my-cards-container" class="my-hand"></div>
         </div>
@@ -264,6 +262,7 @@
             render();
         });
         socket.on('error_msg', (msg) => { alert(msg); });
+
         socket.on('game_over', (data) => {
             let titleEl = document.getElementById('go-title');
             let descEl = document.getElementById('go-desc');
@@ -281,6 +280,7 @@
             document.getElementById('btn-rematch').style.opacity = "1";
             document.getElementById('game-over-modal').style.display = 'flex';
         });
+
         socket.on('rematch_timer', (timeLeft) => {
             document.getElementById('rematch-counter').innerText = `Авто-выход через: ${timeLeft}с`;
         });
@@ -347,14 +347,11 @@
                 let cardCount = (gameState.hands && gameState.hands[p.id]) ? gameState.hands[p.id].length : 0;
                 let isDef = gameState.defenderIdx === targetPlayerIdx;
                 let isCurrentTurn = gameState.currentThrowerIdx === targetPlayerIdx;
-                let hasPassed = (gameState.passedThrowers || []).includes(p.id);
 
                 let bubbleText = "";
                 let bubbleClass = "speech-bubble";
                 if (isDef) {
                     bubbleText = "Кроюсь";
-                } else if (hasPassed) {
-                    bubbleText = "Пас";
                 } else if (isCurrentTurn && gameState.table && gameState.table.length > 0) {
                     bubbleText = "Подкидывает...";
                     bubbleClass += " turn";
@@ -364,7 +361,8 @@
 
                 let bubbleHTML = bubbleText ? `<div class="${bubbleClass}">${bubbleText}</div>` : '';
                 let backCardsHTML = Array(cardCount).fill(0).map(() => `<img class="card-img-back" src="https://deckofcardsapi.com/static/img/back.png">`).join('');
-                seatEl.innerHTML = `<div class="player-profile"> ${bubbleHTML} <div class="avatar"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${p.id}" alt=""></div> <div class="p-name">${p.name}</div> </div> <div class="opp-hand">${backCardsHTML}</div>`;
+                
+                seatEl.innerHTML = `<div class="player-profile"> ${bubbleHTML} <div class="avatar"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${p.id}" alt=""></div> <div class="p-name">${p.name}</div> </div> <div class="opp-hand">${backCardsHTML}</div>`;
                 seatEl.style.display = 'flex';
             }
 
@@ -393,21 +391,28 @@
                 if (!gameState.table || gameState.table.length === 0) {
                     tArea.innerHTML = '';
                 } else {
-                    tArea.innerHTML = gameState.table.map(p => `<div class="table-pair"> <img class="card-img-elem" src="${getCardImageUrl(p.attack)}"> ${p.defense ? `<img class="card-img-elem" src="${getCardImageUrl(p.defense)}">` : ''} </div>`).join('');
+                    tArea.innerHTML = gameState.table.map(p => `
+                        <div class="table-pair"> 
+                            <img class="card-img-elem" src="${getCardImageUrl(p.attack)}"> 
+                            ${p.defense ? `<img class="card-img-elem" src="${getCardImageUrl(p.defense)}">` : ''} 
+                        </div>
+                    `).join('');
                 }
             }
 
             let myHand = (gameState.hands && gameState.hands[myId]) ? gameState.hands[myId] : [];
             let myCardsEl = document.getElementById('my-cards-container');
             if (myCardsEl) {
-                myCardsEl.innerHTML = myHand.map((c, idx) => `<div class="my-card-wrap" data-card-idx="${idx}" onclick="playCard(${idx})"> <img class="card-img-elem" src="${getCardImageUrl(c)}" style="pointer-events: none;"> </div>`).join('');
+                myCardsEl.innerHTML = myHand.map((c, idx) => `
+                    <div class="my-card-wrap" onclick="playCard(${idx})"> 
+                        <img class="card-img-elem" src="${getCardImageUrl(c)}"> 
+                    </div>
+                `).join('');
             }
 
             let isDefMe = gameState.defenderIdx === myIdx;
             let isAttMe = gameState.attackerIdx === myIdx;
             let isMyThrowTurn = gameState.currentThrowerIdx === myIdx;
-            let iPassed = (gameState.passedThrowers || []).includes(myId);
-
             let msg = document.getElementById('msg-box');
             let tRanks = getTableRanks(gameState.table || []);
             let hasCardsToThrow = myHand.some(c => tRanks.has(c.rank));
@@ -416,22 +421,19 @@
                 if (isDefMe) {
                     msg.innerText = "Вы защищаетесь! Кликните карту, чтобы побить.";
                     msg.style.color = "#e74c3c";
-                } else if (iPassed) {
-                    msg.innerText = "Вы спасовали в этом заходе.";
-                    msg.style.color = "#3498db";
                 } else if (gameState.table && gameState.table.length > 0) {
-                    if (isMyThrowTurn && hasCardsToThrow) {
-                        msg.innerText = "Ваша очередь подкидывать! Можете походить или нажать ПАС.";
+                    if (isMyThrowTurn) {
+                        msg.innerText = "Ваша очередь подкидывать! Походите или нажмите ПАС / БИТО.";
                         msg.style.color = "#f1c40f";
                     } else if (hasCardsToThrow) {
-                        msg.innerText = "У вас есть подходящие карты для подкидывания.";
+                        msg.innerText = "У вас есть подходящие карты для подкидывания (ожидайте очереди).";
                         msg.style.color = "#f1c40f";
                     } else {
                         msg.innerText = "Стол занят (ход других игроков)...";
                         msg.style.color = "#a0b5a8";
                     }
-                } else if (isAttMe && gameState.table.length === 0) {
-                    msg.innerText = "Ваш первый ход! Кликните карту.";
+                } else if (isAttMe) {
+                    msg.innerText = "Ваш первый ход! Кликните любую карту.";
                     msg.style.color = "#f1c40f";
                 } else {
                     msg.innerText = "Ход соперника...";
@@ -446,7 +448,7 @@
 
             btnTake.style.display = isDefMe && gameState.table && gameState.table.length > 0 ? 'block' : 'none';
             btnDone.style.display = !isDefMe && gameState.table && gameState.table.length > 0 && allCovered ? 'block' : 'none';
-            btnPass.style.display = !isDefMe && gameState.table && gameState.table.length > 0 && isMyThrowTurn && hasCardsToThrow && !iPassed ? 'block' : 'none';
+            btnPass.style.display = !isDefMe && gameState.table && gameState.table.length > 0 && isMyThrowTurn ? 'block' : 'none';
         }
 
         function playCard(idx) {

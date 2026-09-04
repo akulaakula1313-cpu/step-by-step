@@ -35,7 +35,9 @@ io.on('connection', (socket) => {
         };
         rooms[code] = room;
         socket.join(code);
-        socket.emit('room_created', { code, maxPlayers });
+        
+        let payload = getRoomPayload(room);
+        socket.emit('room_created', payload);
         updateLobby(room);
 
         room.botTimer = setTimeout(() => {
@@ -70,6 +72,8 @@ io.on('connection', (socket) => {
         let pName = `Игрок ${room.players.length + 1}`;
         room.players.push({ id: socket.id, isBot: false, name: pName });
         socket.join(code);
+        
+        socket.emit('room_joined', getRoomPayload(room));
         updateLobby(room);
 
         if (room.players.length === room.maxPlayers) {
@@ -140,6 +144,21 @@ io.on('connection', (socket) => {
     });
 });
 
+function getRoomPayload(room) {
+    let humanCount = room.players.filter(p => !p.isBot).length;
+    let playersList = room.players.map(p => ({ id: p.id, name: p.name, isBot: p.isBot }));
+    return {
+        code: room.id,
+        roomCode: room.id,
+        current: room.players.length,
+        max: room.maxPlayers,
+        maxPlayers: room.maxPlayers,
+        humanCount: humanCount,
+        players: playersList,
+        playersInfo: playersList
+    };
+}
+
 function fillRoomWithBots(room) {
     if (room.botTimer) clearTimeout(room.botTimer);
     let botNames = ['Бот Валера', 'Бот Степан', 'Бот Гриша'];
@@ -150,8 +169,9 @@ function fillRoomWithBots(room) {
 }
 
 function updateLobby(room) {
-    let humanCount = room.players.filter(p => !p.isBot).length;
-    io.to(room.id).emit('lobby_update', { code: room.id, current: room.players.length, max: room.maxPlayers, humanCount });
+    let payload = getRoomPayload(room);
+    io.to(room.id).emit('lobby_update', payload);
+    io.to(room.id).emit('room_created', payload);
 }
 
 function initGameState(room) {
@@ -418,7 +438,7 @@ function executeBotTurnChain(room) {
                     if (aTr !== bTr) return aTr - bTr;
                     return a.c.value - b.c.value;
                 });
-                handlePlayCard(room, curThrower.id, matchObj[0].idx);
+                handlePlayCard(room, curThrower.id, matchObj.idx);
                 scheduleBotTurn(room);
                 return;
             }

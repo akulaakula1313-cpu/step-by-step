@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Карточная игра «Дурак»</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+        body {
+            background-color: #0d3b22;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow-x: hidden;
+        }
+        .screen {
+            display: none;
+            width: 100%;
+            max-width: 800px;
+            padding: 20px;
+            text-align: center;
+        }
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        h1 { margin-bottom: 20px; font-size: 2rem; color: #f1c40f; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .menu-box, .lobby-box {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 450px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 0;
+            width: 100%;
+            font-weight: bold;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .btn:hover { background: #219653; transform: translateY(-2px); }
+        .btn:active { transform: translateY(0); }
+        .btn-secondary { background: #2980b9; }
+        .btn-secondary:hover { background: #1f6391; }
+        input[type="text"], select {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            background: #fff;
+            color: #333;
+            font-size: 1rem;
+            text-align: center;
+        }
+        .room-code-display {
+            font-size: 1.8rem;
+            letter-spacing: 3px;
+            color: #f1c40f;
+            background: rgba(0,0,0,0.6);
+            padding: 10px;
+            border-radius: 6px;
+            margin: 15px 0;
+            border: 1px dashed #f1c40f;
+        }
+        #error-banner {
+            position: fixed;
+            top: 20px;
+            background: #e74c3c;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            z-index: 1000;
+            display: none;
+        }
+        /* Game Screen Layout */
+        #game-screen { max-width: 1000px; height: 100vh; justify-content: space-between; padding: 10px; }
+        .table-area {
+            flex-grow: 1;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            background: radial-gradient(circle, #1e6b3c 0%, #0d3b22 100%);
+            border-radius: 12px;
+            width: 100%;
+            margin: 10px 0;
+            border: 2px dashed rgba(255,255,255,0.2);
+            position: relative;
+            padding: 10px;
+            min-height: 250px;
+        }
+        .card-pair { display: flex; flex-direction: column; gap: 5px; position: relative; }
+        .card {
+            width: 70px;
+            height: 100px;
+            background: white;
+            color: black;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 6px;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.2s;
+            position: relative;
+        }
+        .card.red { color: #c0392b; }
+        .card:hover { transform: translateY(-5px); }
+        .card-defense { position: absolute; top: 15px; left: 15px; z-index: 2; }
+        .player-hand { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; min-height: 110px; }
+        .controls { display: flex; gap: 10px; justify-content: center; width: 100%; margin: 10px 0; }
+        .controls .btn { width: auto; min-width: 100px; margin: 0; }
+        .opponents-info { display: flex; gap: 15px; justify-content: center; width: 100%; flex-wrap: wrap; }
+        .opponent-box { background: rgba(0,0,0,0.3); padding: 8px 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <div id="error-banner"></div>
+
+    <!-- МЕНЮ -->
+    <div id="menu-screen" class="screen active">
+        <h1>♠ Карточная игра «Дурак»</h1>
+        <div class="menu-box">
+            <label for="max-players">Количество игроков:</label>
+            <select id="max-players">
+                <option value="2">Вдвоем</option>
+                <option value="3">Втроем</option>
+                <option value="4">Вчетвером</option>
+            </select>
+            <button class="btn" onclick="createRoom()">✨ Создать комнату</button>
+            <button class="btn btn-secondary" onclick="playWithBots()">🤖 Играть с ботами</button>
+            <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.2); margin: 15px 0;">
+            <input type="text" id="join-code-input" placeholder="Код комнаты (например, AB12CD)" maxlength="6">
+            <button class="btn" style="background: #e67e22;" onclick="joinRoom()">Войти в комнату</button>
+        </div>
+    </div>
+
+    <!-- ЛОББИ -->
+    <div id="lobby-screen" class="screen">
+        <h1>Ожидание игроков...</h1>
+        <div class="lobby-box">
+            <p>Код вашей комнаты:</p>
+            <div class="room-code-display" id="display-room-code">------</div>
+            <p id="lobby-players-count">Игроков: 1 / 2</p>
+            <p style="margin-top: 15px; font-size: 0.85rem; color: #bdc3c7;">Игра начнется автоматически, как только комната заполнится или через 1 минуту (добавятся боты).</p>
+            <button class="btn btn-secondary" style="margin-top: 20px; background: #c0392b;" onclick="backToMenu()">Выйти в меню</button>
+        </div>
+    </div>
+
+    <!-- ИГРА -->
+    <div id="game-screen" class="screen">
+        <div id="game-info" style="font-size: 0.9rem; color: #f1c40f;">Код комнаты: <span id="game-room-code">---</span> | Козырь: <span id="trump-suit-view">---</span></div>
+        <div class="opponents-info" id="opponents-container"></div>
+        
+        <div class="table-area" id="table-cards-container">
+            <span style="color: rgba(255,255,255,0.3); font-size: 1.1rem;">Стол пуст</span>
+        </div>
+
+        <div class="controls">
+            <button class="btn" style="background: #e67e22;" onclick="sendAction('take')">БЕРУ</button>
+            <button class="btn" style="background: #27ae60;" onclick="sendAction('done')">БИТО</button>
+            <button class="btn btn-secondary" onclick="sendAction('pass')">ПАС</button>
+        </div>
+
+        <div class="player-hand" id="player-hand-container"></div>
+    </div>
+
+    <!-- СКРИПТЫ SOCKET.IO -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        let currentRoomCode = null;
+        let myId = null;
+
+        socket.on('connect', () => {
+            myId = socket.id;
+        });
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function showError(msg) {
+            const banner = document.getElementById('error-banner');
+            banner.innerText = msg;
+            banner.style.display = 'block';
+            setTimeout(() => { banner.style.display = 'none'; }, 3500);
+        }
+
+        socket.on('error_msg', (msg) => { showError(msg); });
+
+        function createRoom() {
+            const maxPlayers = document.getElementById('max-players').value;
+            socket.emit('create_room', maxPlayers);
+        }
+
+        function playWithBots() {
+            const maxPlayers = document.getElementById('max-players').value;
+            socket.emit('play_with_bots', maxPlayers);
+        }
+
+        function joinRoom() {
+            const code = document.getElementById('join-code-input').value.trim().toUpperCase();
+            if (!code) { showError('Введите код комнаты'); return; }
+            socket.emit('join_room', code);
+        }
+
+        function backToMenu() {
+            currentRoomCode = null;
+            showScreen('menu-screen');
+        }
+
+        // Универсальный обработчик данных лобби и создания комнаты
+        function handleRoomData(data) {
+            if (!data) return;
+            currentRoomCode = data.code || data.roomCode;
+            document.getElementById('display-room-code').innerText = currentRoomCode || '------';
+            const cur = data.current || (data.players ? data.players.length : 1);
+            const max = data.max || data.maxPlayers || 2;
+            document.getElementById('lobby-players-count').innerText = `Игроков: ${cur} / ${max}`;
+            showScreen('lobby-screen');
+        }
+
+        socket.on('room_created', handleRoomData);
+        socket.on('room_joined', handleRoomData);
+        socket.on('lobby_update', handleRoomData);
+
+        // Обработка игрового процесса
+        socket.on('game_update', (state) => {
+            showScreen('game-screen');
+            currentRoomCode = state.roomCode;
+            document.getElementById('game-room-code').innerText = state.roomCode;
+            document.getElementById('trump-suit-view').innerText = state.trumpSuit || '---';
+
+            // Противники
+            const oppContainer = document.getElementById('opponents-container');
+            oppContainer.innerHTML = '';
+            state.playersInfo.forEach(p => {
+                if (p.id !== myId && p.name !== 'Вы') {
+                    const count = (state.hands[p.id] || []).length;
+                    const box = document.createElement('div');
+                    box.className = 'opponent-box';
+                    box.innerText = `${p.name}: ${count} карт`;
+                    oppContainer.appendChild(box);
+                }
+            });
+
+            // Стол
+            const tableContainer = document.getElementById('table-cards-container');
+            tableContainer.innerHTML = '';
+            if (!state.table || state.table.length === 0) {
+                tableContainer.innerHTML = '<span style="color: rgba(255,255,255,0.3); font-size: 1.1rem;">Стол пуст</span>';
+            } else {
+                state.table.forEach((pair) => {
+                    const pairDiv = document.createElement('div');
+                    pairDiv.className = 'card-pair';
+
+                    const attCard = createCardElement(pair.attack);
+                    pairDiv.appendChild(attCard);
+
+                    if (pair.defense) {
+                        const defCard = createCardElement(pair.defense);
+                        defCard.classList.add('card-defense');
+                        pairDiv.appendChild(defCard);
+                    }
+                    tableContainer.appendChild(pairDiv);
+                });
+            }
+
+            // Рука игрока
+            const handContainer = document.getElementById('player-hand-container');
+            handContainer.innerHTML = '';
+            const myHand = state.hands[myId] || [];
+            myHand.forEach((card, idx) => {
+                const cardEl = createCardElement(card);
+                cardEl.onclick = () => {
+                    socket.emit('player_action', { roomCode: currentRoomCode, action: 'play_card', cardIdx: idx });
+                };
+                handContainer.appendChild(cardEl);
+            });
+        });
+
+        function createCardElement(card) {
+            const el = document.createElement('div');
+            const isRed = card.suit === '♥' || card.suit === '♦';
+            el.className = `card ${isRed ? 'red' : ''}`;
+            el.innerHTML = `
+                <div style="text-align: left; font-size: 0.9rem;">${card.rank}<br>${card.suit}</div>
+                <div style="text-align: center; font-size: 1.5rem;">${card.suit}</div>
+                <div style="text-align: right; font-size: 0.9rem; transform: rotate(180deg);">${card.rank}<br>${card.suit}</div>
+            `;
+            return el;
+        }
+
+        function sendAction(actionType) {
+            if (!currentRoomCode) return;
+            socket.emit('player_action', { roomCode: currentRoomCode, action: actionType });
+        }
+
+        socket.on('game_over', (data) => {
+            alert(data.winner ? (data.winner === myId ? 'Вы победили!' : 'Вы проиграли!') : 'Ничья!');
+        });
+
+        socket.on('opponent_disconnected', () => {
+            showError('Соперник покинул игру');
+            backToMenu();
+        });
+    </script>
+</body>
+</html>

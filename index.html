@@ -314,18 +314,16 @@
         .card-back-css {
             width: 24px;
             height: 35px;
-            background: #2980b9;
-            border: 1px solid #fff;
+            position: relative;
+            border: 1px solid #d4af37;
             border-radius: 3px;
             margin-left: -12px;
             box-shadow: -2px 2px 5px rgba(0,0,0,0.4);
-            background-image: repeating-linear-gradient(
-                45deg,
-                #1b4f72 0,
-                #1b4f72 2px,
-                #2980b9 2px,
-                #2980b9 4px
-            );
+            background-color: #0b2545;
+            background-image:
+                repeating-linear-gradient(45deg, rgba(212,175,55,0.18) 0, rgba(212,175,55,0.18) 1.5px, transparent 1.5px, transparent 5px),
+                radial-gradient(circle at center, #163f74 0%, #0b2545 75%);
+            overflow: hidden;
         }
 
         .opp-hand .card-back-css:first-child { margin-left: 0; }
@@ -358,54 +356,79 @@
             width: var(--card-w);
             height: var(--card-h);
             background: #fff;
-            color: #000;
-            border-radius: 6px;
-            border: 1px solid #bbb;
+            border-radius: 7px;
+            border: 1px solid rgba(0,0,0,0.15);
             box-shadow: -2px 3px 8px rgba(0,0,0,0.4);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 6px;
-            font-weight: bold;
-            font-size: 16px;
             cursor: pointer;
             position: relative;
+            overflow: hidden;
         }
 
-        .card-css.red { color: #c0392b; }
-        .card-css.black { color: #2c3e50; }
-
-        .card-corner {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            line-height: 1;
-            font-size: 14px;
-        }
-
-        .card-center-suit {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 26px;
+        .card-face-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            pointer-events: none;
+            -webkit-user-drag: none;
         }
 
         .deck-top-css {
             width: var(--card-w);
             height: var(--card-h);
-            background: #2980b9;
-            border: 2px solid #fff;
+            position: relative;
+            border: 2px solid #d4af37;
             border-radius: 6px;
             box-shadow: -2px 3px 8px rgba(0,0,0,0.4);
             cursor: pointer;
-            background-image: repeating-linear-gradient(
-                45deg,
-                #1b4f72 0,
-                #1b4f72 3px,
-                #2980b9 3px,
-                #2980b9 6px
-            );
+            background-color: #0b2545;
+            background-image:
+                repeating-linear-gradient(45deg, rgba(212,175,55,0.18) 0, rgba(212,175,55,0.18) 2px, transparent 2px, transparent 7px),
+                radial-gradient(circle at center, #163f74 0%, #0b2545 75%);
+            overflow: hidden;
+        }
+
+        .back-emblem {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 1.5px solid #d4af37;
+            border-radius: 50%;
+            background: rgba(212,175,55,0.08);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .back-emblem span {
+            color: #d4af37;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .card-back-css .back-emblem {
+            width: 14px;
+            height: 14px;
+            border-width: 1px;
+        }
+
+        .card-back-css .back-emblem .be-suit { font-size: 9px; }
+        .card-back-css .back-emblem .be-letter { display: none; }
+
+        .deck-top-css .back-emblem {
+            width: calc(var(--card-w) * 0.62);
+            height: calc(var(--card-w) * 0.62);
+        }
+
+        .deck-top-css .back-emblem .be-letter {
+            font-size: calc(var(--card-w) * 0.15);
+            margin-bottom: -2px;
+        }
+
+        .deck-top-css .back-emblem .be-suit {
+            font-size: calc(var(--card-w) * 0.32);
         }
 
         .trump-card-under {
@@ -538,9 +561,6 @@
             :root { --card-w: 58px; --card-h: 84px; }
             #deck-area { left: 100px; }
             #table-area { left: 180px; right: 140px; }
-            .card-css { font-size: 13px; padding: 4px; }
-            .card-center-suit { font-size: 21px; }
-            .card-corner { font-size: 12px; }
             .my-card-wrap { margin-left: -22px; }
             .my-hand { max-width: 96vw; }
             .seat-left { left: 5px; }
@@ -553,8 +573,6 @@
             #table-area { left: 105px; right: 75px; top: 36%; gap: 8px; }
             .table-pair { width: 66px; height: 72px; }
             .table-pair .card-css:nth-child(2) { left: 12px; top: 10px; }
-            .card-center-suit { font-size: 18px; }
-            .card-corner { font-size: 10px; }
             .seat-left { top: 38%; }
             .seat-right { top: 38%; }
             #player-area { bottom: 5px; }
@@ -625,7 +643,12 @@
 
     <div id="deck-area">
         <div id="trump-under" class="trump-card-under"></div>
-        <div id="deck-top-card" class="deck-top-css"></div>
+        <div id="deck-top-card" class="deck-top-css">
+            <div class="back-emblem">
+                <span class="be-letter">Д</span>
+                <span class="be-suit">♠</span>
+            </div>
+        </div>
         <div id="deck-counter" class="deck-counter-badge">0</div>
     </div>
 
@@ -801,19 +824,24 @@
             'Вы проголосовали! Ожидание остальных...';
     }
 
+    const CARD_RANK_CODE = { '6': '6', '7': '7', '8': '8', '9': '9', '10': '0', 'J': 'J', 'Q': 'Q', 'K': 'K', 'A': 'A' };
+    const CARD_SUIT_CODE = { '♠': 'S', '♥': 'H', '♦': 'D', '♣': 'C' };
+
+    function cardImageUrl(card) {
+        const r = CARD_RANK_CODE[card.rank] || card.rank;
+        const s = CARD_SUIT_CODE[card.suit] || '';
+        return `https://deckofcardsapi.com/static/img/${r}${s}.png`;
+    }
+
     function renderCardHTML(card) {
         if (!card || !card.rank || !card.suit) return '';
 
-        const isRed = card.suit === '♥' || card.suit === '♦';
-        const colorClass = isRed ? 'red' : 'black';
+        const url = cardImageUrl(card);
+        const label = `${card.rank}${card.suit}`;
 
         return `
-            <div class="card-css ${colorClass}">
-                <div class="card-corner">
-                    <span>${escapeHTML(card.rank)}</span>
-                    <span>${escapeHTML(card.suit)}</span>
-                </div>
-                <div class="card-center-suit">${escapeHTML(card.suit)}</div>
+            <div class="card-css">
+                <img class="card-face-img" src="${url}" alt="${escapeHTML(label)}" draggable="false">
             </div>
         `;
     }
@@ -910,7 +938,7 @@
 
             const backCardsHTML = Array(cardCount)
                 .fill(0)
-                .map(() => '<div class="card-back-css"></div>')
+                .map(() => '<div class="card-back-css"><div class="back-emblem"><span class="be-suit">♠</span></div></div>')
                 .join('');
 
             const avatarSeed = encodeURIComponent(p.id);
@@ -919,7 +947,7 @@
                 <div class="player-profile">
                     ${bubbleHTML}
                     <div class="avatar">
-                        <img src="https://api.dicebear.com/9.x/identicon/svg?seed=${avatarSeed}" alt="">
+                        <img src="https://api.dicebear.com/9.x/adventurer/svg?seed=${avatarSeed}&backgroundType=gradientLinear&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf" alt="">
                     </div>
                     <div class="p-name">${escapeHTML(p.name || 'Игрок')}</div>
                 </div>

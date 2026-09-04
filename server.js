@@ -101,29 +101,6 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('leave_room', (roomCode) => {
-        let code = (roomCode || '').trim().toUpperCase();
-        let room = rooms[code];
-        if (!room) return;
-        let idx = room.players.findIndex(p => p.id === socket.id);
-        if (idx !== -1) {
-            if (room.botTimer) clearTimeout(room.botTimer);
-            if (room.rematchTimer) clearInterval(room.rematchTimer);
-            if (room.botLoopTimeout) clearTimeout(room.botLoopTimeout);
-            room.players.splice(idx, 1);
-            socket.leave(code);
-            let humansLeft = room.players.filter(p => !p.isBot).length;
-            if (humansLeft === 0 || code.startsWith('BOTS_')) {
-                delete rooms[code];
-            } else if (room.state && !room.state.isGameOver) {
-                io.to(code).emit('opponent_disconnected');
-                delete rooms[code];
-            } else {
-                updateLobby(room);
-            }
-        }
-    });
-
     socket.on('player_action', ({ roomCode, action, cardIdx }) => {
         let room = rooms[roomCode];
         if (!room) { socket.emit('error_msg', 'Комната не найдена'); return; }
@@ -140,6 +117,29 @@ io.on('connection', (socket) => {
         else if (action === 'pass') success = handlePass(room, socket.id);
         
         if (success) scheduleBotTurn(room);
+    });
+
+    socket.on('leave_room', (roomCode) => {
+        if (!roomCode) return;
+        let room = rooms[roomCode];
+        if (!room) return;
+        let idx = room.players.findIndex(p => p.id === socket.id);
+        if (idx !== -1) {
+            if (room.botTimer) clearTimeout(room.botTimer);
+            if (room.rematchTimer) clearInterval(room.rematchTimer);
+            if (room.botLoopTimeout) clearTimeout(room.botLoopTimeout);
+            socket.leave(roomCode);
+            room.players.splice(idx, 1);
+            let humansLeft = room.players.filter(p => !p.isBot).length;
+            if (humansLeft === 0) {
+                delete rooms[roomCode];
+            } else if (room.state && !room.state.isGameOver) {
+                io.to(roomCode).emit('opponent_disconnected');
+                delete rooms[roomCode];
+            } else {
+                updateLobby(room);
+            }
+        }
     });
 
     socket.on('disconnect', () => {

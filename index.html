@@ -589,7 +589,7 @@ body.no-anim .waves,body.no-anim .bokeh{animation:none}
    ЭМОДЗИ + ЧАТ
    ============================================================ */
 #emojiBar{
-  position:absolute;bottom:172px;left:50%;transform:translateX(-50%);
+  position:fixed;bottom:calc(12px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);
   z-index:50;display:flex;gap:6px;
   padding:7px 10px;border-radius:999px;
   background:var(--glass);border:1px solid var(--line);
@@ -604,8 +604,9 @@ body.no-anim .waves,body.no-anim .bokeh{animation:none}
 }
 .emoji-btn:hover{background:color-mix(in srgb,var(--accent) 18%,transparent);transform:scale(1.15)}
 .float-emoji{
-  position:absolute;z-index:5000;
+  position:fixed;z-index:5000;
   font-size:36px;pointer-events:none;
+  will-change:transform,opacity;
   animation:floatUp 2.2s ease-out forwards;
 }
 @keyframes floatUp{
@@ -714,7 +715,7 @@ body.no-anim .waves,body.no-anim .bokeh{animation:none}
   .hero h1{font-size:30px;letter-spacing:3px}
   .panel{padding:22px}
   .modal{padding:20px}
-  #emojiBar{bottom:142px}
+  #emojiBar{bottom:calc(10px + env(safe-area-inset-bottom));max-width:calc(100vw - 20px);overflow-x:auto}
   #chat{width:220px}
 }
 </style>
@@ -1521,9 +1522,13 @@ socket.on('emoji', ({ playerId, emoji }) => {
     const el = document.createElement('div');
     el.className = 'float-emoji';
     el.textContent = emoji;
-    el.style.left = (rect.left + rect.width / 2) + 'px';
-    el.style.top = (rect.top + 10) + 'px';
+    // Emoji is a viewport overlay only: it must never participate in the game layout.
+    // Use fixed coordinates from getBoundingClientRect(), so it stays attached to the
+    // opponent's seat on desktop and mobile without moving cards, buttons or zones.
+    el.style.left = Math.round(rect.left + rect.width / 2) + 'px';
+    el.style.top = Math.round(rect.top + Math.min(18, rect.height * .18)) + 'px';
     document.body.appendChild(el);
+    // Keep the animation layer outside #app so it cannot change the board flow.
     setTimeout(() => el.remove(), 2300);
   });
 

@@ -715,8 +715,24 @@ body.no-anim .waves,body.no-anim .bokeh{animation:none}
   .hero h1{font-size:30px;letter-spacing:3px}
   .panel{padding:22px}
   .modal{padding:20px}
-  #emojiBar{bottom:calc(10px + env(safe-area-inset-bottom));max-width:calc(100vw - 20px);overflow-x:auto}
-  #chat{width:220px}
+  /* На телефоне чат и эмодзи не должны лежать поверх руки игрока.
+     Переносим их в верхнюю левую свободную зону стола. */
+  #emojiBar{
+    top:calc(78px + env(safe-area-inset-top));
+    bottom:auto;
+    left:12px;
+    transform:none;
+    max-width:calc(100vw - 24px);
+    overflow-x:auto;
+  }
+  #chat{
+    width:220px;
+    left:12px;
+    right:auto;
+    top:calc(132px + env(safe-area-inset-top));
+    bottom:auto;
+    max-height:min(280px,42vh);
+  }
 }
 </style>
 </head>

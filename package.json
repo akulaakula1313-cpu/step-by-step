@@ -1,9 +1,12 @@
 {
-  "name": "DurakOnline",
-  "version": "1.0.0",
+  "name": "sani-group-durak-premium",
+  "version": "2.1.1",
+  "private": true,
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node test.js",
+    "test:all": "node test.js && node overall_test.js"
   },
   "dependencies": {
     "express": "^5.2.1",

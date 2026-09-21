@@ -1,1196 +1,1637 @@
-<!DOCTYPE html>
-<html lang="ru">
+<!doctype html>
+<html lang="ru" data-theme="royal-gold">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Карточная игра «Дурак»</title>
-    <script src="/socket.io/socket.io.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Дурак — SANI GROUP Premium</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230a5b35'/><text x='50' y='75' font-size='70' text-anchor='middle' fill='%23f4d27a'>♠</text></svg>">
+<script src="/socket.io/socket.io.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&family=Cinzel:wght@600;800&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   ТЕМЫ — управляются через data-theme на <html>
+   ============================================================ */
+:root{
+  --cw:78px; --ch:112px;
+  --radius:11px;
+  --trans:.22s cubic-bezier(.2,.7,.3,1.1);
+}
 
-        :root {
-            --table-green: #0d5c32;
-            --card-w: 72px;
-            --card-h: 104px;
-            --sat: env(safe-area-inset-top, 0px);
-            --sab: env(safe-area-inset-bottom, 0px);
-            --sal: env(safe-area-inset-left, 0px);
-            --sar: env(safe-area-inset-right, 0px);
-        }
+[data-theme="royal-gold"]{
+  --bg:#030806; --table-a:#0a5b35; --table-b:#041d12; --table-c:#073d25;
+  --accent:#f4d27a; --accent-hi:#fff0ae; --accent-deep:#8e6520;
+  --text:#f7f3e8; --muted:#9eae9f;
+  --card-face:#fffefb; --card-shade:#e8e3d8; --red:#c92f37; --black:#141414;
+  --glass:rgba(6,14,9,.62); --line:rgba(244,210,122,.22);
+  --shadow:0 18px 34px rgba(0,0,0,.5);
+}
+[data-theme="forest"]{
+  --bg:#0f0b06; --table-a:#2d5a32; --table-b:#1a2c1c; --table-c:#243f26;
+  --accent:#d4a95c; --accent-hi:#f0d68a; --accent-deep:#6b4914;
+  --text:#f5ede0; --muted:#a89a82;
+  --card-face:#f7f0e0; --card-shade:#ddd2b8; --red:#a8342b; --black:#1e1a12;
+  --glass:rgba(20,14,8,.66); --line:rgba(212,169,92,.26);
+  --shadow:0 18px 34px rgba(0,0,0,.55);
+  --font-head:'Cinzel',serif;
+}
+[data-theme="artdeco"]{
+  --bg:#050505; --table-a:#0a0a0a; --table-b:#000; --table-c:#111;
+  --accent:#e0b552; --accent-hi:#ffe08a; --accent-deep:#7d5a10;
+  --text:#f4efe0; --muted:#9a9084;
+  --card-face:#fdfbf3; --card-shade:#e0dac6; --red:#c1272d; --black:#0a0a0a;
+  --glass:rgba(8,8,8,.78); --line:rgba(224,181,82,.32);
+  --shadow:0 18px 34px rgba(0,0,0,.6);
+  --font-head:'Cinzel',serif;
+}
+[data-theme="neon"]{
+  --bg:#08040f; --table-a:#1a0b3d; --table-b:#080418; --table-c:#14082e;
+  --accent:#c34bff; --accent-hi:#f0a8ff; --accent-deep:#5a1178;
+  --text:#f2eaff; --muted:#8f7fb5;
+  --card-face:#fbf6ff; --card-shade:#e0d4ef; --red:#ff2d9a; --black:#1a0e2e;
+  --glass:rgba(15,8,30,.72); --line:rgba(195,75,255,.35);
+  --shadow:0 18px 34px rgba(120,40,220,.35);
+}
+[data-theme="ocean"]{
+  --bg:#020814; --table-a:#073a52; --table-b:#03182b; --table-c:#05273a;
+  --accent:#5fe0d8; --accent-hi:#b8f5f0; --accent-deep:#1e6a65;
+  --text:#e8f3f7; --muted:#7c97a5;
+  --card-face:#f4fbfd; --card-shade:#d5e5eb; --red:#e05a6a; --black:#0f1a22;
+  --glass:rgba(4,20,35,.72); --line:rgba(95,224,216,.28);
+  --shadow:0 18px 34px rgba(20,60,90,.5);
+}
+[data-theme="esports"]{
+  --bg:#08090d; --table-a:#0e1220; --table-b:#030408; --table-c:#0a0d18;
+  --accent:#a3ff2b; --accent-hi:#d8ff7a; --accent-deep:#4e7a08;
+  --text:#eaf5ff; --muted:#7c8595;
+  --card-face:#f6faff; --card-shade:#d5e0ea; --red:#ff2d75; --black:#0a0d18;
+  --glass:rgba(8,12,22,.72); --line:rgba(163,255,43,.32);
+  --shadow:0 18px 34px rgba(60,220,120,.15);
+}
 
-        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;
+  background:var(--bg);color:var(--text);
+  font-family:Manrope,system-ui,sans-serif;}
+button,input{font:inherit;color:inherit;border:0;background:none}
 
-        html, body {
-            margin: 0;
-            padding: 0;
-            background: #06331b;
-            font-family: 'Roboto', sans-serif;
-            color: #fff;
-            width: 100vw;
-            height: 100vh;
-            height: 100dvh;
-            overflow: hidden;
-            position: fixed;
-        }
+/* ============================================================
+   СТОЛ + ФОН
+   ============================================================ */
+#app{position:fixed;inset:0;overflow:hidden}
+#bg{
+  position:absolute;inset:0;z-index:0;
+  background:
+    radial-gradient(ellipse at 50% 40%,color-mix(in srgb,var(--accent) 12%,transparent),transparent 60%),
+    radial-gradient(ellipse at 50% 50%,var(--table-a),var(--table-c) 55%,var(--table-b) 100%);
+}
+#bg::before{
+  content:"";position:absolute;inset:0;
+  background:
+    repeating-linear-gradient(92deg,rgba(255,255,255,.014) 0 1px,transparent 1px 7px),
+    repeating-linear-gradient(0deg,rgba(0,0,0,.02) 0 1px,transparent 1px 6px);
+  opacity:.7;
+}
+#bg::after{
+  content:"";position:absolute;inset:0;
+  background:radial-gradient(ellipse at center,transparent 32%,rgba(0,0,0,.55) 100%);
+  pointer-events:none;
+}
+.waves{
+  position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:
+    radial-gradient(ellipse at 30% 40%,rgba(255,255,255,.05),transparent 40%),
+    radial-gradient(ellipse at 70% 60%,rgba(255,255,255,.04),transparent 40%);
+  animation:waveMove 22s ease-in-out infinite alternate;
+}
+@keyframes waveMove{
+  from{transform:translate(-4%,-2%) scale(1.05)}
+  to{transform:translate(4%,2%) scale(1.1)}
+}
+.bokeh{
+  position:absolute;inset:0;z-index:2;pointer-events:none;opacity:.35;
+  background:
+    radial-gradient(circle at 15% 20%,var(--accent) 0 1px,transparent 2px),
+    radial-gradient(circle at 85% 30%,var(--accent) 0 1px,transparent 2px),
+    radial-gradient(circle at 40% 80%,var(--accent) 0 1px,transparent 2px),
+    radial-gradient(circle at 70% 65%,var(--accent) 0 1px,transparent 2px);
+  background-size:340px 280px,420px 380px,300px 320px,480px 400px;
+  animation:bokehDrift 40s linear infinite;
+}
+@keyframes bokehDrift{to{background-position:340px 280px,-420px 380px,300px -320px,-480px -400px}}
+body.no-anim .waves,body.no-anim .bokeh{animation:none}
 
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+/* ============================================================
+   ТОПБАР
+   ============================================================ */
+.topbar{
+  position:absolute;z-index:60;left:0;right:0;top:0;height:62px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 20px;
+  background:linear-gradient(180deg,var(--glass),transparent);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{
+  width:40px;height:40px;border-radius:12px;
+  display:grid;place-items:center;
+  color:var(--accent);font-size:22px;font-weight:900;
+  border:1px solid var(--line);
+  background:linear-gradient(145deg,color-mix(in srgb,var(--accent) 14%,transparent),rgba(0,0,0,.3));
+  box-shadow:inset 0 1px rgba(255,255,255,.1),0 0 20px color-mix(in srgb,var(--accent) 25%,transparent);
+}
+.brand-name{font-weight:800;letter-spacing:2px;font-size:13px}
+.brand-name small{color:var(--muted);font-weight:600}
+.pill{
+  padding:7px 14px;border-radius:999px;
+  border:1px solid var(--line);
+  background:var(--glass);
+  color:var(--accent);font-size:11px;font-weight:700;letter-spacing:.5px;
+  backdrop-filter:blur(10px);
+}
+.top-actions{display:flex;gap:8px;align-items:center}
+.icon-btn{
+  height:38px;min-width:38px;padding:0 10px;border-radius:11px;
+  background:var(--glass);border:1px solid var(--line);
+  color:var(--text);cursor:pointer;font-size:16px;
+  transition:var(--trans);
+}
+.icon-btn:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px)}
 
-        button, input { font-family: inherit; }
+/* ============================================================
+   СТОЛ / ЦЕНТР
+   ============================================================ */
+#center{
+  position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  width:min(900px,86vw);height:min(360px,42vh);
+  z-index:10;
+}
+#deck{
+  position:absolute;left:0;top:50%;transform:translateY(-50%);
+  width:var(--cw);height:var(--ch);
+  cursor:default;
+}
+.deck-card{
+  width:100%;height:100%;border-radius:var(--radius);
+  border:2px solid var(--accent-deep);
+  background:
+    repeating-linear-gradient(45deg,color-mix(in srgb,var(--accent) 20%,transparent) 0 2px,transparent 2px 8px),
+    radial-gradient(circle at 30% 20%,color-mix(in srgb,var(--accent) 40%,#1a3050),#061827 72%);
+  box-shadow:var(--shadow),inset 0 1px rgba(255,255,255,.18);
+  display:grid;place-items:center;
+}
+.deck-logo{
+  width:56%;height:56%;border-radius:50%;
+  border:2px solid var(--accent);
+  display:grid;place-items:center;
+  color:var(--accent-hi);font-size:24px;font-weight:900;
+}
+#deckCount{
+  position:absolute;right:-8px;bottom:-8px;
+  padding:3px 8px;border-radius:999px;
+  background:var(--bg);border:1px solid var(--accent);
+  color:var(--accent);font-size:11px;font-weight:800;
+}
+#trump{
+  position:absolute;left:30px;top:24px;z-index:-1;
+  transform:rotate(9deg);
+}
+#roundHud{
+  position:absolute;left:50%;top:-12px;transform:translateX(-50%);
+  min-width:220px;padding:8px 18px;
+  border-radius:999px;
+  background:var(--glass);border:1px solid var(--line);
+  text-align:center;backdrop-filter:blur(12px);
+  box-shadow:0 12px 30px rgba(0,0,0,.4);
+}
+#roundLabel{display:block;font-size:8px;letter-spacing:3px;color:var(--muted)}
+#turnLabel{display:block;margin-top:2px;font-size:12px;font-weight:800;color:var(--accent)}
+#pairs{
+  position:absolute;left:105px;right:0;top:0;bottom:0;
+  display:flex;flex-wrap:wrap;align-content:center;justify-content:center;
+  gap:14px;
+}
+.pair{
+  position:relative;width:calc(var(--cw) + 22px);height:var(--ch);
+  filter:drop-shadow(0 12px 20px rgba(0,0,0,.3));
+  animation:dealIn .28s ease both;
+}
+@keyframes dealIn{from{opacity:0;transform:translateY(14px) scale(.94)}to{opacity:1;transform:none}}
+.pair .card{position:absolute;left:0;top:0}
+.pair .card.def{left:20px;top:15px;z-index:2}
 
-        #game-container {
-            width: 100vw;
-            height: 100vh;
-            height: 100dvh;
-            max-width: 100vw;
-            max-height: 100vh;
-            max-height: 100dvh;
-            aspect-ratio: 16 / 9;
-            background: var(--table-green);
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: calc(12px + var(--sat)) calc(12px + var(--sar)) calc(12px + var(--sab)) calc(12px + var(--sal));
-            box-shadow: inset 0 0 100px rgba(0,0,0,0.5);
-            overflow: hidden;
-        }
+/* ============================================================
+   КАРТЫ — с SVG-мастями и pip-раскладкой
+   ============================================================ */
+.card{
+  width:var(--cw);height:var(--ch);
+  border-radius:var(--radius);
+  background:linear-gradient(145deg,var(--card-face),var(--card-shade));
+  color:var(--black);
+  border:1px solid rgba(0,0,0,.3);
+  box-shadow:inset 0 1px rgba(255,255,255,.9),inset 0 -1px rgba(0,0,0,.12),var(--shadow);
+  position:relative;overflow:hidden;
+  isolation:isolate;
+  transition:transform var(--trans),box-shadow var(--trans),filter var(--trans);
+  transform-origin:center bottom;
+}
+.card.red{color:var(--red)}
+.card::after{
+  content:"";position:absolute;inset:3px;border-radius:8px;
+  border:1px solid rgba(0,0,0,.06);pointer-events:none;
+}
+.card .corner{
+  position:absolute;top:5px;left:7px;
+  display:flex;flex-direction:column;align-items:center;
+  line-height:1;font-weight:900;
+  text-shadow:0 1px rgba(255,255,255,.7);
+}
+.card .corner b{font-family:Georgia,serif;font-size:19px;letter-spacing:-.5px}
+.card .corner svg{width:14px;height:14px;margin-top:1px}
+.card .corner.bottom{top:auto;left:auto;right:7px;bottom:5px;transform:rotate(180deg)}
+.card .pips{
+  position:absolute;inset:14% 16%;
+}
+.card .pip{
+  position:absolute;transform:translate(-50%,-50%);
+}
+.card .pip svg{width:100%;height:100%;display:block}
+.card.face .pip{width:26%;height:26%}
+.card .face-letter{
+  position:absolute;inset:0;display:grid;place-items:center;
+  font-family:Georgia,serif;font-weight:900;
+  font-size:calc(var(--cw) * .55);
+  letter-spacing:-2px;
+  color:currentColor;
+  text-shadow:0 3px 4px rgba(0,0,0,.15);
+}
+.card.clickable{cursor:pointer}
+.card.clickable:hover{
+  transform:translateY(-16px) scale(1.04);
+  box-shadow:0 26px 42px rgba(0,0,0,.5),0 0 0 2px color-mix(in srgb,var(--accent) 70%,transparent);
+  filter:brightness(1.04);
+}
+.card.playable{
+  box-shadow:0 0 0 2px var(--accent),0 0 26px color-mix(in srgb,var(--accent) 40%,transparent),var(--shadow);
+  animation:cardPulse 1.8s ease-in-out infinite;
+}
+@keyframes cardPulse{50%{box-shadow:0 0 0 2px var(--accent-hi),0 0 34px color-mix(in srgb,var(--accent) 55%,transparent),var(--shadow)}}
+.card.disabled{opacity:1;filter:none}
+.card.back{
+  background:
+    repeating-linear-gradient(45deg,color-mix(in srgb,var(--accent) 22%,transparent) 0 2px,transparent 2px 7px),
+    radial-gradient(circle at 30% 25%,color-mix(in srgb,var(--accent) 30%,#1a3050),#061827 70%);
+  border:2px solid var(--accent-deep);
+}
+.card.back::after{display:none}
 
-        @media (max-aspect-ratio: 16/9) {
-            #game-container {
-                width: 100vw;
-                height: calc(100vw * 9 / 16);
-                max-height: 100dvh;
-            }
-        }
+/* ============================================================
+   МОЯ ЗОНА
+   ============================================================ */
+.my-zone{
+  position:absolute;z-index:40;
+  left:50%;bottom:6px;transform:translateX(-50%);
+  width:min(1080px,97vw);
+  display:flex;flex-direction:column;align-items:center;
+}
+#message{
+  min-height:34px;max-width:80%;padding:8px 18px;
+  border-radius:999px;
+  background:var(--glass);border:1px solid var(--line);
+  font-size:12px;text-align:center;color:var(--accent);
+  backdrop-filter:blur(14px);
+  box-shadow:0 12px 28px rgba(0,0,0,.3);
+}
+.actions{display:flex;gap:10px;margin:8px 0 6px;min-height:38px}
+.action{
+  padding:11px 20px;min-width:104px;
+  border-radius:13px;
+  font-size:11px;font-weight:900;letter-spacing:.6px;
+  cursor:pointer;
+  border:1px solid rgba(255,255,255,.1);
+  box-shadow:0 12px 24px rgba(0,0,0,.3),inset 0 1px rgba(255,255,255,.18);
+  transition:var(--trans);
+  position:relative;overflow:hidden;
+}
+.action:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.08)}
+.action:active:not(:disabled){transform:translateY(1px)}
+.action:disabled{opacity:.35;cursor:not-allowed}
+.action.take{background:linear-gradient(135deg,#e05a5a,#9a2129)}
+.action.done{background:linear-gradient(135deg,#f1d27b,#ad7d25)}
+.action.pass{background:linear-gradient(135deg,#5f9ee8,#2a5a96)}
+.hand{
+  display:flex;justify-content:center;align-items:flex-end;
+  width:100%;height:152px;padding:0 10px;
+  perspective:1100px;
+}
+.hand .wrap{
+  position:relative;
+  margin-left:-34px;
+  transition:transform var(--trans),filter var(--trans);
+  transform-origin:50% 100%;
+}
+.hand .wrap:first-child{margin-left:0}
+.hand .wrap:hover{
+  z-index:60;
+  transform:translateY(-22px) rotate(0deg) scale(1.055)!important;
+  filter:drop-shadow(0 14px 20px rgba(0,0,0,.4));
+}
+.hand .wrap .card{pointer-events:none}
 
-        @media (max-width: 768px), (max-height: 500px) {
-            #game-container {
-                width: 100vw;
-                height: 100vh;
-                height: 100dvh;
-                aspect-ratio: unset;
-                max-width: none;
-                max-height: none;
-            }
-            :root {
-                --card-w: 52px;
-                --card-h: 76px;
-            }
-        }
+/* ============================================================
+   МЕСТА (АВАТАРЫ)
+   ============================================================ */
+.seat{
+  position:absolute;z-index:20;
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  min-width:100px;
+}
+.seat.top{top:72px;left:50%;transform:translateX(-50%)}
+.seat.left{left:22px;top:46%;transform:translateY(-50%)}
+.seat.right{right:22px;top:46%;transform:translateY(-50%)}
+.profile{display:flex;flex-direction:column;align-items:center;position:relative}
+.avatar{
+  width:54px;height:54px;border-radius:50%;
+  display:grid;place-items:center;
+  font-weight:900;font-size:20px;
+  background:radial-gradient(circle at 35% 25%,#426653,#0a1b11 68%);
+  border:2px solid color-mix(in srgb,var(--accent) 55%,transparent);
+  box-shadow:0 12px 26px rgba(0,0,0,.5),inset 0 1px rgba(255,255,255,.15);
+  position:relative;
+}
+.avatar.bot{border-color:color-mix(in srgb,#5ca9ff 70%,transparent)}
+.turn-ring{
+  position:absolute;inset:-6px;border-radius:50%;
+  border:2px solid var(--accent);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent),0 0 22px color-mix(in srgb,var(--accent) 55%,transparent);
+  animation:pulseRing 1.5s ease-in-out infinite;
+}
+@keyframes pulseRing{50%{transform:scale(1.08);opacity:.7}}
+.name{
+  font-size:11px;font-weight:700;
+  padding:3px 10px;border-radius:999px;
+  background:rgba(0,0,0,.7);border:1px solid var(--line);
+  white-space:nowrap;
+  margin-top:-4px;
+}
+.role{font-size:9px;color:var(--muted);letter-spacing:1px}
+.opp-hand{display:flex;justify-content:center}
+.opp-hand .card.back{width:26px;height:38px;margin-left:-16px;border-radius:5px}
+.opp-hand .card.back:first-child{margin-left:0}
+.seat.left .opp-hand,.seat.right .opp-hand{flex-direction:column}
+.seat.left .card.back,.seat.right .card.back{
+  width:38px;height:26px;
+  margin-left:0;margin-top:-26px;
+}
+.seat.left .card.back:first-child,.seat.right .card.back:first-child{margin-top:0}
 
-        .top-navbar {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: calc(40px + var(--sat));
-            padding-top: var(--sat);
-            background: rgba(0,0,0,0.4);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding-left: max(15px, var(--sal));
-            padding-right: max(15px, var(--sar));
-            z-index: 100;
-            font-size: 13px;
-        }
+/* ============================================================
+   ЛОББИ
+   ============================================================ */
+.lobby{
+  position:absolute;inset:0;z-index:200;
+  display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 50% 30%,color-mix(in srgb,var(--accent) 8%,transparent),transparent 40%),rgba(0,0,0,.86);
+  backdrop-filter:blur(14px);
+  transition:opacity .3s;
+}
+.panel{
+  width:min(500px,calc(100% - 28px));
+  max-height:94vh;overflow:auto;
+  border-radius:26px;
+  border:1px solid var(--line);
+  background:linear-gradient(145deg,color-mix(in srgb,var(--bg) 92%,var(--accent) 3%),var(--bg));
+  box-shadow:0 40px 110px rgba(0,0,0,.75),inset 0 1px rgba(255,255,255,.06);
+  padding:30px;
+  animation:panelIn .3s ease;
+}
+@keyframes panelIn{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+.hero{text-align:center;margin-bottom:22px}
+.hero .suits{font-size:22px;color:var(--accent);letter-spacing:8px;text-shadow:0 0 22px color-mix(in srgb,var(--accent) 40%,transparent)}
+.hero h1{
+  font-family:'Cinzel',Georgia,serif;
+  font-size:40px;letter-spacing:6px;margin:10px 0 4px;
+  background:linear-gradient(180deg,var(--accent-hi) 0,var(--accent) 45%,var(--accent-deep) 100%);
+  -webkit-background-clip:text;background-clip:text;
+  filter:drop-shadow(0 6px 22px rgba(0,0,0,.3));
+}
+.hero p{margin:0;color:var(--muted);font-size:11px;letter-spacing:2px}
+.field{margin:12px 0}
+.label{display:block;font-size:10px;color:var(--muted);margin:0 0 6px 4px;letter-spacing:1px}
+.input{
+  width:100%;height:46px;padding:0 14px;
+  border-radius:12px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--bg) 92%,#000),var(--bg));
+  border:1px solid var(--line);
+  color:var(--text);outline:none;
+  transition:var(--trans);
+}
+.input:focus{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 15%,transparent)}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mode{
+  padding:16px;border-radius:14px;
+  border:1px solid var(--line);
+  background:linear-gradient(145deg,color-mix(in srgb,var(--accent) 6%,transparent),transparent);
+  color:var(--text);cursor:pointer;text-align:left;
+  transition:var(--trans);
+}
+.mode:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 14px 30px rgba(0,0,0,.4)}
+.mode strong{display:block;font-size:13px;margin-bottom:3px}
+.mode small{display:block;color:var(--muted);font-size:10px}
+.count-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.count{
+  height:40px;border-radius:11px;
+  border:1px solid var(--line);
+  background:color-mix(in srgb,var(--accent) 4%,transparent);
+  color:var(--text);font-size:11px;font-weight:800;cursor:pointer;
+  transition:var(--trans);
+}
+.count.active{background:linear-gradient(135deg,var(--accent),var(--accent-deep));color:var(--bg);border-color:var(--accent)}
+.count:hover:not(.active){border-color:var(--accent)}
+.primary{
+  width:100%;height:48px;border-radius:13px;
+  background:linear-gradient(135deg,var(--accent-hi),var(--accent),var(--accent-deep));
+  color:#1a1205;font-weight:900;font-size:13px;letter-spacing:1px;
+  cursor:pointer;margin-top:10px;
+  box-shadow:inset 0 1px rgba(255,255,255,.4),0 12px 26px rgba(0,0,0,.3);
+  transition:var(--trans);
+}
+.primary:hover{transform:translateY(-2px);filter:brightness(1.06)}
+.secondary{
+  width:100%;height:44px;border-radius:12px;
+  background:color-mix(in srgb,var(--accent) 6%,transparent);
+  border:1px solid var(--line);color:var(--text);
+  cursor:pointer;margin-top:8px;font-size:12px;
+  transition:var(--trans);
+}
+.secondary:hover{border-color:var(--accent);color:var(--accent)}
+.row{display:flex;gap:8px}
+.row>*{flex:1}
+.divider{height:1px;background:var(--line);margin:18px 0}
+.status{min-height:18px;text-align:center;color:var(--accent);font-size:11px;margin-top:8px}
+.sani{margin-top:18px;text-align:center;color:var(--muted);font-size:10px}
+.sani b{color:var(--accent);letter-spacing:2px}
 
-        .nav-left, .nav-right {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            cursor: pointer;
-            opacity: 0.9;
-        }
+#roomBox{
+  display:none;margin-top:12px;padding:14px;
+  border:1px dashed var(--accent);border-radius:12px;text-align:center;
+}
+#roomCode{
+  font-size:32px;font-weight:900;letter-spacing:6px;
+  color:var(--accent);cursor:pointer;
+  font-family:monospace;
+}
 
-        .nav-left:hover, .nav-right:hover { opacity: 1; }
+/* ============================================================
+   МОДАЛКИ
+   ============================================================ */
+.modal-layer{
+  position:absolute;inset:0;z-index:500;
+  display:none;align-items:center;justify-content:center;
+  background:rgba(0,0,0,.82);backdrop-filter:blur(10px);
+}
+.modal-layer.open{display:flex}
+.modal{
+  width:min(560px,calc(100% - 28px));
+  max-height:90vh;overflow:auto;
+  border-radius:22px;
+  border:1px solid var(--line);
+  background:linear-gradient(145deg,color-mix(in srgb,var(--bg) 92%,var(--accent) 3%),var(--bg));
+  padding:26px;
+  box-shadow:0 40px 110px rgba(0,0,0,.75);
+  animation:panelIn .25s ease;
+}
+.modal h2{margin:0 0 14px;color:var(--accent);font-size:22px;font-family:'Cinzel',serif;letter-spacing:2px}
+.modal p,.modal li{color:var(--text);font-size:13px;line-height:1.65}
+.modal li{margin:6px 0;color:var(--muted)}
+.close{float:right;font-size:24px;color:var(--muted);cursor:pointer;line-height:1}
+.close:hover{color:var(--accent)}
+.result{text-align:center}
+.result .big{
+  font-family:'Cinzel',serif;
+  font-size:38px;font-weight:900;
+  color:var(--accent);margin:10px 0 6px;letter-spacing:4px;
+  text-shadow:0 0 34px color-mix(in srgb,var(--accent) 50%,transparent);
+}
 
-        .nav-right-group {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+/* ============================================================
+   НАСТРОЙКИ (панель сбоку)
+   ============================================================ */
+#settings{
+  position:absolute;top:0;right:0;height:100%;width:min(360px,92vw);
+  z-index:600;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--bg) 95%,var(--accent) 2%),var(--bg));
+  border-left:1px solid var(--line);
+  padding:22px;
+  transform:translateX(100%);
+  transition:transform .3s cubic-bezier(.3,.7,.3,1);
+  overflow-y:auto;
+  box-shadow:-30px 0 80px rgba(0,0,0,.6);
+}
+#settings.open{transform:none}
+#settings h3{
+  margin:0 0 18px;color:var(--accent);
+  font-family:'Cinzel',serif;letter-spacing:3px;font-size:16px;
+}
+.sect{margin-bottom:22px}
+.sect h4{
+  margin:0 0 10px;color:var(--muted);
+  font-size:10px;letter-spacing:2px;text-transform:uppercase;
+}
+.theme-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.theme-btn{
+  aspect-ratio:1;border-radius:12px;
+  border:2px solid var(--line);cursor:pointer;
+  position:relative;
+  transition:var(--trans);
+  overflow:hidden;
+}
+.theme-btn.active{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+.theme-btn:hover{transform:scale(1.05)}
+.theme-btn::after{
+  content:attr(data-name);
+  position:absolute;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,.6);color:#fff;
+  font-size:9px;padding:3px 4px;text-align:center;
+  letter-spacing:.5px;
+}
+.toggle-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 0;border-bottom:1px solid color-mix(in srgb,var(--line) 50%,transparent);
+  font-size:12px;
+}
+.toggle{
+  width:42px;height:24px;border-radius:999px;
+  background:color-mix(in srgb,var(--accent) 20%,transparent);
+  border:1px solid var(--line);
+  position:relative;cursor:pointer;
+  transition:var(--trans);
+}
+.toggle::after{
+  content:"";position:absolute;top:2px;left:2px;
+  width:18px;height:18px;border-radius:50%;
+  background:var(--text);
+  transition:var(--trans);
+}
+.toggle.on{background:linear-gradient(135deg,var(--accent),var(--accent-deep))}
+.toggle.on::after{transform:translateX(18px);background:var(--bg)}
+.select{
+  height:36px;padding:0 10px;border-radius:9px;
+  background:color-mix(in srgb,var(--accent) 6%,transparent);
+  border:1px solid var(--line);
+  color:var(--text);font-size:12px;cursor:pointer;
+  outline:none;
+}
 
-        .menu-btn-nav {
-            background: rgba(241, 196, 15, 0.15);
-            border: 1px solid #f1c40f;
-            color: #f1c40f;
-            padding: 3px 10px;
-            border-radius: 8px;
-            font-weight: bold;
-            font-size: 11px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            transition: all 0.2s;
-        }
-        .menu-btn-nav:hover {
-            background: #f1c40f;
-            color: #111;
-        }
+/* ============================================================
+   ЭМОДЗИ + ЧАТ
+   ============================================================ */
+#emojiBar{
+  position:absolute;bottom:172px;left:50%;transform:translateX(-50%);
+  z-index:50;display:flex;gap:6px;
+  padding:7px 10px;border-radius:999px;
+  background:var(--glass);border:1px solid var(--line);
+  backdrop-filter:blur(14px);
+  box-shadow:0 12px 30px rgba(0,0,0,.4);
+}
+.emoji-btn{
+  width:34px;height:34px;border-radius:50%;
+  font-size:19px;cursor:pointer;
+  background:transparent;
+  transition:var(--trans);
+}
+.emoji-btn:hover{background:color-mix(in srgb,var(--accent) 18%,transparent);transform:scale(1.15)}
+.float-emoji{
+  position:absolute;z-index:5000;
+  font-size:36px;pointer-events:none;
+  animation:floatUp 2.2s ease-out forwards;
+}
+@keyframes floatUp{
+  0%{opacity:1;transform:translate(-50%,0) scale(.6)}
+  30%{transform:translate(-50%,-40px) scale(1.2)}
+  100%{opacity:0;transform:translate(-50%,-120px) scale(.9)}
+}
+#chat{
+  position:absolute;left:12px;bottom:12px;z-index:50;
+  width:min(320px,80vw);max-height:280px;
+  display:flex;flex-direction:column;
+  padding:10px;border-radius:14px;
+  background:var(--glass);border:1px solid var(--line);
+  backdrop-filter:blur(14px);
+  box-shadow:0 16px 40px rgba(0,0,0,.4);
+  transition:var(--trans);
+}
+#chat.collapsed .chat-body{display:none}
+.chat-head{display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+.chat-head b{font-size:11px;color:var(--accent);letter-spacing:1px}
+.chat-body{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+.chat-log{
+  max-height:160px;overflow-y:auto;
+  font-size:11px;color:var(--text);
+  padding:4px;line-height:1.5;
+}
+.chat-log .who{color:var(--accent);font-weight:700}
+.chat-quick{display:flex;gap:5px;flex-wrap:wrap}
+.chat-quick button{
+  padding:4px 9px;border-radius:999px;
+  background:color-mix(in srgb,var(--accent) 12%,transparent);
+  border:1px solid var(--line);
+  font-size:10px;cursor:pointer;
+}
+.chat-input{
+  height:32px;padding:0 10px;border-radius:9px;
+  background:color-mix(in srgb,var(--bg) 92%,#000);
+  border:1px solid var(--line);color:var(--text);
+  font-size:12px;outline:none;
+}
+.chat-input:focus{border-color:var(--accent)}
 
-        .chat-toggle {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            cursor: pointer;
-            opacity: 0.9;
-            position: relative;
-            background: rgba(255,255,255,0.08);
-            padding: 3px 10px;
-            border-radius: 10px;
-        }
+/* ============================================================
+   TOAST
+   ============================================================ */
+#toast{
+  position:absolute;z-index:5000;left:50%;top:76px;
+  transform:translate(-50%,-14px);opacity:0;
+  pointer-events:none;
+  padding:10px 18px;border-radius:999px;
+  background:var(--glass);border:1px solid var(--accent);
+  color:var(--text);font-size:12px;
+  backdrop-filter:blur(14px);
+  box-shadow:0 16px 40px rgba(0,0,0,.5);
+  transition:.25s;
+}
+#toast.show{opacity:1;transform:translate(-50%,0)}
 
-        .chat-toggle:hover { opacity: 1; }
+/* ============================================================
+   ЧАСТИЦЫ ПОБЕДЫ
+   ============================================================ */
+.confetti{
+  position:fixed;z-index:4000;pointer-events:none;
+  width:8px;height:14px;border-radius:2px;
+  top:-20px;
+  animation:confettiFall linear forwards;
+}
+@keyframes confettiFall{
+  to{transform:translateY(110vh) rotate(720deg);opacity:.15}
+}
 
-        .chat-unread-badge {
-            background: #e74c3c;
-            color: #fff;
-            font-size: 10px;
-            font-weight: bold;
-            padding: 1px 5px;
-            border-radius: 8px;
-            line-height: 1.3;
-        }
+/* ============================================================
+   ТАЙМЕР ХОДА
+   ============================================================ */
+.turn-timer{
+  height:3px;border-radius:2px;background:var(--accent);
+  margin-top:4px;
+  transition:width 1s linear;
+}
 
-        .chat-panel {
-            position: absolute;
-            top: calc(40px + var(--sat));
-            right: 12px;
-            width: 260px;
-            max-height: 360px;
-            background: #0e1a12;
-            border: 1px solid #1e3325;
-            border-radius: 0 0 10px 10px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-            display: none;
-            flex-direction: column;
-            z-index: 400;
-            overflow: hidden;
-        }
-
-        .chat-panel.open { display: flex; }
-
-        .chat-panel-header {
-            background: rgba(0,0,0,0.35);
-            padding: 8px 12px;
-            font-size: 12px;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .chat-close-btn { cursor: pointer; opacity: 0.7; }
-        .chat-close-btn:hover { opacity: 1; }
-
-        .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 8px 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            min-height: 120px;
-            max-height: 260px;
-            font-size: 12px;
-        }
-
-        .chat-msg-sender {
-            font-weight: bold;
-            color: #f1c40f;
-            margin-right: 4px;
-        }
-
-        .chat-msg-sender.me { color: #2ecc71; }
-
-        .chat-msg-text {
-            color: #e8f0ea;
-            word-break: break-word;
-        }
-
-        .chat-input-row {
-            display: flex;
-            gap: 6px;
-            padding: 8px;
-            border-top: 1px solid #1c2b21;
-        }
-
-        .chat-input {
-            flex: 1;
-            min-width: 0;
-            background: #09100c;
-            border: 1px solid #1c2b21;
-            padding: 7px 9px;
-            border-radius: 6px;
-            color: #fff;
-            outline: none;
-            font-size: 12px;
-        }
-
-        .chat-input:focus { border-color: #2ecc71; }
-
-        .chat-send-btn {
-            background: #2ecc71;
-            border: none;
-            border-radius: 6px;
-            color: #111;
-            font-weight: bold;
-            padding: 0 12px;
-            cursor: pointer;
-        }
-
-        .chat-send-btn:hover { background: #27ae60; }
-
-        @media (max-width: 600px) {
-            .chat-panel { width: calc(100% - 24px); right: 12px; left: 12px; }
-        }
-
-        .room-badge {
-            background: rgba(241, 196, 15, 0.2);
-            border: 1px solid #f1c40f;
-            color: #f1c40f;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-weight: bold;
-            letter-spacing: 1px;
-        }
-
-        #room-code-display { display: none; }
-
-        #main-menu {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.75);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 500;
-            overflow-y: auto;
-            padding: 10px;
-        }
-
-        .menu-modal {
-            background: #111a14;
-            border: 1px solid #1e3325;
-            padding: 20px 25px;
-            border-radius: 12px;
-            width: calc(100% - 30px);
-            max-width: 420px;
-            max-height: 92vh;
-            overflow-y: auto;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .menu-title { font-size: 19px; font-weight: 700; text-align: center; }
-
-        .name-input-box {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-        .name-label {
-            font-size: 11px;
-            color: #a0b5a8;
-            padding-left: 2px;
-        }
-        .name-input {
-            width: 100%;
-            background: #09100c;
-            border: 1px solid #1c2b21;
-            padding: 9px 12px;
-            border-radius: 6px;
-            color: #fff;
-            outline: none;
-            font-size: 13px;
-        }
-        .name-input:focus { border-color: #2ecc71; }
-
-        .players-select-box {
-            display: flex;
-            background: #09100c;
-            padding: 10px;
-            border-radius: 8px;
-            width: 100%;
-            justify-content: space-around;
-        }
-
-        .p-opt {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 5px;
-            cursor: pointer;
-            opacity: 0.5;
-        }
-
-        .p-opt.active { opacity: 1; }
-
-        .p-opt-icon {
-            width: 32px;
-            height: 32px;
-            background: #164e2d;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 12px;
-            font-weight: bold;
-            border: 2px solid transparent;
-        }
-
-        .p-opt.active .p-opt-icon {
-            border-color: #2ecc71;
-            background: #1b663b;
-        }
-
-        .p-opt-lbl { font-size: 11px; color: #a0b5a8; }
-
-        .btn-start {
-            width: 100%;
-            padding: 11px;
-            background: #f1c40f;
-            border: none;
-            border-radius: 6px;
-            color: #111;
-            font-weight: bold;
-            font-size: 13px;
-            cursor: pointer;
-            text-transform: uppercase;
-        }
-
-        .btn-start:hover { background: #f39c12; }
-
-        .menu-divider { width: 100%; height: 1px; background: #1c2b21; }
-
-        .room-join-row { display: flex; gap: 8px; width: 100%; }
-
-        .room-input {
-            flex: 1;
-            min-width: 0;
-            background: #09100c;
-            border: 1px solid #1c2b21;
-            padding: 9px;
-            border-radius: 6px;
-            color: #fff;
-            text-align: center;
-            text-transform: uppercase;
-            outline: none;
-            font-size: 13px;
-        }
-
-        .room-input:focus { border-color: #2ecc71; }
-
-        .btn-rules {
-            width: 100%;
-            padding: 9px;
-            background: #1e3325;
-            border: 1px solid #2ecc71;
-            color: #2ecc71;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .btn-rules:hover { background: #2ecc71; color: #111; }
-
-        #menu-room-code-box {
-            display: none;
-            width: 100%;
-            background: rgba(0, 0, 0, 0.45);
-            border: 2px dashed #f39c12;
-            border-radius: 10px;
-            padding: 12px;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            animation: fadeInMenuBox 0.3s ease-in-out;
-        }
-        @keyframes fadeInMenuBox {from { opacity: 0; transform: scale(0.95); }to { opacity: 1; transform: scale(1); }}
-        .menu-room-code-title {font-size: 11px;color: #a0b5a8;text-transform: uppercase;letter-spacing: 1px;margin-bottom: 4px;}
-        .menu-room-code-value {font-size: 32px;font-weight: 800;color: #f1c40f;letter-spacing: 4px;text-shadow: 0 2px 10px rgba(241, 196, 15, 0.4);user-select: all;cursor: pointer;}
-        .menu-room-code-hint {font-size: 10px;color: #7f8c8d;margin-top: 4px;}
-        
-        .sani-group-badge {display: flex;align-items: center;justify-content: center;gap: 10px;background: linear-gradient(135deg, #121824 0%, #1a1020 100%);border: 1px solid rgba(241, 196, 15, 0.25);padding: 8px 16px;border-radius: 8px;cursor: pointer;width: 100%;transition: all 0.2s;}
-        .sani-group-badge:hover { border-color: rgba(241, 196, 15, 0.6); transform: translateY(-1px); }
-        .sani-logo-icon { font-size: 16px; color: #f1c40f; }
-        .sani-info { display: flex; flex-direction: column; text-align: left; }
-        .sani-subtitle { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: #8892b0; }
-        .sani-title {font-size: 13px;font-weight: 800;letter-spacing: 1px;background: linear-gradient(to right, #f1c40f, #e67e22);-webkit-background-clip: text;-webkit-text-fill-color: transparent;}
-        
-        .custom-modal {position: fixed;z-index: 1000;left: 0;top: 0;width: 100%;height: 100%;background-color: rgba(0, 0, 0, 0.75);display: none;align-items: center;justify-content: center;}
-        .custom-modal-content {background-color: #111a14;border: 1px solid #1e3325;color: #f1f5f9;padding: 24px;border-radius: 12px;width: 90%;max-width: 460px;max-height: 85vh;overflow-y: auto;position: relative;box-shadow: 0 10px 30px rgba(0,0,0,0.8);text-align: left;}
-        .custom-close-btn {color: #a0b5a8;position: absolute;right: 15px;top: 12px;font-size: 24px;font-weight: bold;cursor: pointer;}
-        .custom-close-btn:hover { color: #fff; }
-        .rules-text { font-size: 13px; line-height: 1.5; color: #cbd5e1; }
-        .rules-text ul { padding-left: 18px; margin: 6px 0; }
-        .rules-text li { margin-bottom: 5px; }
-        .sani-modal-content { text-align: center !important; border-color: rgba(241, 196, 15, 0.4); }
-        .sani-modal-header h2 { color: #f1c40f; margin: 5px 0 3px 0; font-size: 20px; }
-        .sani-big-logo { font-size: 22px; color: #e67e22; letter-spacing: 5px; }
-        .sani-tagline { color: #a0b5a8; font-size: 12px; margin-bottom: 12px; }
-        .sani-modal-body p { color: #cbd5e1; font-size: 13px; line-height: 1.4; margin-bottom: 12px; }
-        .sani-team-creed { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
-        .sani-team-creed span { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); padding: 4px 10px; border-radius: 15px; font-size: 11px; }
-        .sani-copyright { font-size: 10px; color: #64748b; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 8px; }
-        
-        #game-over-modal {position: absolute;top: 0;left: 0;width: 100%;height: 100%;background: rgba(0, 0, 0, 0.8);display: none;flex-direction: column;justify-content: center;align-items: center;z-index: 600;}
-        .modal-card {background: #111a14;border: 2px solid #2ecc71;padding: 30px;border-radius: 12px;width: calc(100% - 30px);max-width: 380px;text-align: center;box-shadow: 0 10px 30px rgba(0,0,0,0.8);display: flex;flex-direction: column;gap: 15px;}
-        .modal-title { font-size: 22px; font-weight: bold; color: #f1c40f; }
-        .modal-subtitle { font-size: 14px; color: #a0b5a8; }
-        .btn-rematch {width: 100%;padding: 12px;background: #2ecc71;border: none;border-radius: 6px;color: #fff;font-weight: bold;font-size: 15px;cursor: pointer;text-transform: uppercase;box-shadow: 0 4px 10px rgba(46, 204, 113, 0.4);}
-        .btn-rematch:hover { background: #27ae60; }
-        .btn-rematch:disabled { cursor: not-allowed; }
-        .rematch-status { font-size: 12px; color: #f1c40f; min-height: 16px; }
-
-        .confirm-modal-btns {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        .btn-confirm-yes {
-            flex: 1;
-            padding: 10px;
-            background: #e74c3c;
-            border: none;
-            border-radius: 6px;
-            color: #fff;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .btn-confirm-yes:hover { background: #c0392b; }
-        .btn-confirm-no {
-            flex: 1;
-            padding: 10px;
-            background: #1e3325;
-            border: 1px solid #2ecc71;
-            color: #2ecc71;
-            border-radius: 6px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .btn-confirm-no:hover { background: #2ecc71; color: #111; }
-
-        .seat {position: absolute;display: flex;flex-direction: column;align-items: center;z-index: 20;}
-        .seat-top { top: calc(44px + var(--sat)); left: 50%; transform: translateX(-50%); }
-        .seat-left { top: 42%; left: 20px; transform: translateY(-50%); }
-        .seat-right { top: 42%; right: 20px; transform: translateY(-50%); }
-        
-        .player-profile {display: flex;flex-direction: column;align-items: center;position: relative;margin-bottom: 6px;}
-        .avatar {width: 42px;height: 42px;background: #2c3e50;border-radius: 50%;display: flex;justify-content: center;align-items: center;border: 2px solid #fff;box-shadow: 0 4px 10px rgba(0,0,0,0.4);overflow: hidden;}
-        .avatar img { width: 100%; height: 100%; object-fit: cover; }
-        .p-name {font-size: 11px;font-weight: 500;background: rgba(0,0,0,0.5);padding: 2px 8px;border-radius: 10px;margin-top: -8px;z-index: 5;white-space: nowrap;}
-        .speech-bubble {position: absolute;top: -26px;background: #fff;color: #111;padding: 2px 8px;border-radius: 10px;font-size: 10px;font-weight: bold;white-space: nowrap;box-shadow: 0 2px 6px rgba(0,0,0,0.3);z-index: 10;}
-        .speech-bubble.turn { background: #f1c40f; color: #111; animation: pulse 1.2s infinite; }
-        @keyframes pulse {0% { transform: scale(1); }50% { transform: scale(1.08); }100% { transform: scale(1); }}
-        
-        .opp-hand { display: flex; }
-        .card-back-css {width: 24px;height: 35px;position: relative;border: 1px solid #d4af37;border-radius: 3px;margin-left: -12px;box-shadow: -2px 2px 5px rgba(0,0,0,0.4);background-color: #0b2545;background-image: repeating-linear-gradient(45deg, rgba(212,175,55,0.18) 0, rgba(212,175,55,0.18) 1.5px, transparent 1.5px, transparent 5px), radial-gradient(circle at center, #163f74 0%, #0b2545 75%);overflow: hidden;}
-        .opp-hand .card-back-css:first-child { margin-left: 0; }
-        .seat-left .opp-hand, .seat-right .opp-hand { flex-direction: column; }
-        .seat-left .card-back-css, .seat-right .card-back-css { margin-left: 0; margin-top: -24px; width: 35px; height: 24px; }
-        .seat-left .opp-hand .card-back-css:first-child, .seat-right .opp-hand .card-back-css:first-child { margin-top: 0; }
-        
-        #deck-area {position: absolute;left: 300px;top: 42%;transform: translateY(-50%);display: flex;align-items: center;z-index: 10;}
-        .card-css {width: var(--card-w);height: var(--card-h);background: #fff;border-radius: 7px;border: 1px solid rgba(0,0,0,0.15);box-shadow: -2px 3px 8px rgba(0,0,0,0.4);cursor: pointer;position: relative;overflow: hidden;}
-        .card-face-img {width: 100%;height: 100%;object-fit: cover;display: block;pointer-events: none;-webkit-user-drag: none;}
-        .deck-top-css {width: var(--card-w);height: var(--card-h);position: relative;border: 2px solid #d4af37;border-radius: 6px;box-shadow: -2px 3px 8px rgba(0,0,0,0.4);cursor: pointer;background-color: #0b2545;background-image: repeating-linear-gradient(45deg, rgba(212,175,55,0.18) 0, rgba(212,175,55,0.18) 2px, transparent 2px, transparent 7px), radial-gradient(circle at center, #163f74 0%, #0b2545 75%);overflow: hidden;}
-        .back-emblem {position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);border: 1.5px solid #d4af37;border-radius: 50%;background: rgba(212,175,55,0.08);display: flex;flex-direction: column;align-items: center;justify-content: center;}
-        .back-emblem span { color: #d4af37; font-weight: 700; line-height: 1; }
-        .card-back-css .back-emblem { width: 14px; height: 14px; border-width: 1px; }
-        .card-back-css .back-emblem .be-suit { font-size: 9px; }
-        .card-back-css .back-emblem .be-letter { display: none; }
-        .deck-top-css .back-emblem { width: calc(var(--card-w) * 0.62); height: calc(var(--card-w) * 0.62); }
-        .deck-top-css .back-emblem .be-letter { font-size: calc(var(--card-w) * 0.15); margin-bottom: -2px; }
-        .deck-top-css .back-emblem .be-suit { font-size: calc(var(--card-w) * 0.32); }
-        .trump-card-under {position: absolute;left: 0;top: 0;transform: rotate(90deg);z-index: -1;}
-        .deck-counter-badge {position: absolute;right: -25px;bottom: 0;background: rgba(0,0,0,0.7);padding: 2px 6px;border-radius: 4px;font-size: 11px;font-weight: bold;color: #f1c40f;}
-        
-        #table-area {position: absolute;left: 400px;right: 220px;top: 38%;transform: translateY(-50%);min-height: 120px;display: flex;flex-wrap: wrap;gap: 16px;align-items: center;justify-content: center;z-index: 15;}
-        .table-pair {position: relative;width: calc(var(--card-w) + 20px);height: var(--card-h);}
-        .table-pair .card-css:first-child { position: absolute; left: 0; top: 0; }
-        .table-pair .card-css:nth-child(2) { position: absolute; left: 18px; top: 14px; z-index: 2; }
-        
-        #player-area {position: absolute;bottom: 15px;left: 50%;transform: translateX(-50%);width: 100%;max-width: 850px;display: flex;flex-direction: column;align-items: center;z-index: 25;}
-        .my-hand {display: flex;justify-content: center;align-items: flex-end;margin-top: 6px;max-width: 100%;overflow: visible;}
-        .my-card-wrap {cursor: pointer;transition: transform 0.15s;margin-left: -28px;position: relative;}
-        .my-card-wrap:first-child { margin-left: 0; }
-        .my-card-wrap:hover { transform: translateY(-16px); z-index: 100; }
-        
-        .action-bar {display: flex;gap: 10px;margin-bottom: 6px;min-height: 32px;}
-        .action-btn {padding: 8px 22px;border-radius: 4px;font-weight: bold;font-size: 13px;border: none;cursor: pointer;box-shadow: 0 4px 10px rgba(0,0,0,0.3);}
-        .btn-take { background: #e74c3c; color: #fff; }
-        .btn-done { background: #f1c40f; color: #111; }
-        .btn-pass { background: #3498db; color: #fff; }
-        .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        
-        #msg-box {background: rgba(0,0,0,0.6);padding: 4px 14px;border-radius: 12px;font-size: 12px;color: #f1c40f;margin-bottom: 6px;text-align: center;}
-        
-        @media (max-width: 900px) {
-            #deck-area { left: 90px; }
-            #table-area { left: 160px; right: 120px; }
-            .my-card-wrap { margin-left: -22px; }
-            .my-hand { max-width: 96vw; }
-            .seat-left { left: 5px; }
-            .seat-right { right: 5px; }
-        }
-        @media (max-width: 600px) {
-            #deck-area { left: 35px; top: 38%; }
-            #table-area { left: 95px; right: 45px; top: 35%; gap: 6px; }
-            .table-pair { width: 58px; height: 76px; }
-            .table-pair .card-css:nth-child(2) { left: 10px; top: 8px; }
-            .seat-left { top: 38%; }
-            .seat-right { top: 38%; }
-            #player-area { bottom: 5px; }
-            .action-btn { padding: 6px 12px; font-size: 11px; }
-            .top-navbar { padding: 0 8px; }
-            .nav-left, .nav-right { gap: 6px; font-size: 11px; }
-            .my-card-wrap { margin-left: -24px; }
-        }
-    </style>
+/* ============================================================
+   АДАПТИВ
+   ============================================================ */
+@media(max-width:900px){
+  :root{--cw:64px;--ch:92px}
+  .hand{height:124px}
+  .hand .wrap{margin-left:-27px}
+  #center{width:94vw;height:min(300px,42vh)}
+  #pairs{left:80px;gap:9px}
+  .pair{width:calc(var(--cw) + 15px)}
+  .pair .card.def{left:14px;top:11px}
+  .seat.left{left:5px}
+  .seat.right{right:5px}
+  .topbar{padding:0 10px}
+  .brand-name{display:none}
+}
+@media(max-width:520px){
+  :root{--cw:52px;--ch:76px}
+  .hand{height:106px}
+  .hand .wrap{margin-left:-23px}
+  .my-zone{bottom:0}
+  .action{padding:8px 10px;min-width:0;font-size:10px}
+  #message{font-size:10px;padding:6px 12px}
+  .card .corner b{font-size:15px}
+  .card .corner svg{width:11px;height:11px}
+  .hero h1{font-size:30px;letter-spacing:3px}
+  .panel{padding:22px}
+  .modal{padding:20px}
+  #emojiBar{bottom:142px}
+  #chat{width:220px}
+}
+</style>
 </head>
 <body>
-    <div id="game-container">
-        <!-- Навигационная панель -->
-        <div class="top-navbar">
-            <div class="nav-left">
-                <button class="menu-btn-nav" id="nav-menu-btn" onclick="confirmExitToMenu()">🏠 Меню</button>
-                <div class="room-badge" id="room-code-display">КОМНАТА: <span id="r-code-val"></span></div>
-            </div>
-            <div class="nav-right-group">
-                <div class="chat-toggle" id="chat-toggle-btn" onclick="toggleChat()" style="display: none;">
-                    💬 Чат <span class="chat-unread-badge" id="chat-unread-badge" style="display: none;">0</span>
-                </div>
-                <div class="nav-right" onclick="toggleMusic()">
-                    <span id="music-label">🎵 Звук: ВЫКЛ</span>
-                </div>
-            </div>
-        </div>
+<div id="app">
+  <div id="bg"></div>
+  <div class="waves"></div>
+  <div class="bokeh"></div>
 
-        <!-- Чат комнаты -->
-        <div class="chat-panel" id="chat-panel">
-            <div class="chat-panel-header">
-                <span>Чат комнаты</span>
-                <span class="chat-close-btn" onclick="toggleChat()">✕</span>
-            </div>
-            <div class="chat-messages" id="chat-messages"></div>
-            <div class="chat-input-row">
-                <input type="text" class="chat-input" id="chat-input" placeholder="Сообщение...">
-                <button class="chat-send-btn" onclick="sendChatMessage()">➤</button>
-            </div>
-        </div>
+  <!-- Топбар -->
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">♠</div>
+      <div class="brand-name">SANI GROUP <small>· ДУРАК</small></div>
+      <span id="roomPill" class="pill" style="display:none"></span>
+    </div>
+    <div class="top-actions">
+      <span id="statusPill" class="pill">МЕНЮ</span>
+      <button class="icon-btn" onclick="openModal('rules')" title="Правила">?</button>
+      <button class="icon-btn" id="soundBtn" onclick="toggleSound()" title="Звук">🔊</button>
+      <button class="icon-btn" onclick="toggleSettings()" title="Настройки">⚙</button>
+      <button class="icon-btn" onclick="confirmExit()" title="Выйти">⌂</button>
+    </div>
+  </div>
 
-        <!-- Игровые места соперников -->
-        <div class="seat seat-top" id="seat-top" style="display: none;"></div>
-        <div class="seat seat-left" id="seat-left" style="display: none;"></div>
-        <div class="seat seat-right" id="seat-right" style="display: none;"></div>
+  <!-- Места -->
+  <div id="seat-top" class="seat top" style="display:none"></div>
+  <div id="seat-left" class="seat left" style="display:none"></div>
+  <div id="seat-right" class="seat right" style="display:none"></div>
 
-        <!-- Колода -->
-        <div id="deck-area" style="display: none;">
-            <div style="position: relative;">
-                <div id="trump-under" class="trump-card-under" style="display: none;"></div>
-                <div id="deck-top-card" class="deck-top-css">
-                    <div class="back-emblem">
-                        <span class="be-letter">Д</span>
-                        <span class="be-suit">♠</span>
-                    </div>
-                </div>
-                <div class="deck-counter-badge" id="deck-counter">0</div>
-            </div>
-        </div>
+  <!-- Центр стола -->
+  <div id="center" style="display:none">
+    <div id="roundHud">
+      <span id="roundLabel">ПАРТИЯ</span>
+      <b id="turnLabel">ОЖИДАНИЕ</b>
+    </div>
+    <div id="deck">
+      <div class="deck-card"><div class="deck-logo">♠</div></div>
+      <div id="deckCount">0</div>
+      <div id="trump"></div>
+    </div>
+    <div id="pairs"></div>
+  </div>
 
-        <!-- Игровой стол -->
-        <div id="table-area"></div>
+  <!-- Моя зона -->
+  <div class="my-zone" id="myZone" style="display:none">
+    <div id="message">Ожидание игры…</div>
+    <div class="actions">
+      <button id="take" class="action take" onclick="send('take')">БЕРУ</button>
+      <button id="done" class="action done" onclick="send('done')">БИТО</button>
+      <button id="pass" class="action pass" onclick="send('pass')">ПАС</button>
+    </div>
+    <div id="hand" class="hand"></div>
+  </div>
 
-        <!-- Зона игрока -->
-        <div id="player-area">
-            <div id="msg-box">Ожидание игры...</div>
-            <div class="action-bar">
-                <button class="action-btn btn-take" id="btn-take" onclick="sendAction('take')" style="display: none;">БЕРУ</button>
-                <button class="action-btn btn-done" id="btn-done" onclick="sendAction('done')" style="display: none;">БИТО</button>
-                <button class="action-btn btn-pass" id="btn-pass" onclick="sendAction('pass')" style="display: none;">ПАС</button>
-            </div>
-            <div class="my-hand" id="my-cards-container"></div>
-        </div>
+  <!-- Эмодзи -->
+  <div id="emojiBar" style="display:none">
+    <button class="emoji-btn" onclick="sendEmoji('😂')">😂</button>
+    <button class="emoji-btn" onclick="sendEmoji('😎')">😎</button>
+    <button class="emoji-btn" onclick="sendEmoji('👍')">👍</button>
+    <button class="emoji-btn" onclick="sendEmoji('😱')">😱</button>
+    <button class="emoji-btn" onclick="sendEmoji('🎯')">🎯</button>
+    <button class="emoji-btn" onclick="sendEmoji('🔥')">🔥</button>
+  </div>
 
-        <!-- Главное меню (Лобби) -->
-        <div id="main-menu">
-            <div class="menu-modal">
-                <div class="menu-title">С кем будете играть?</div>
-                
-                <div class="name-input-box">
-                    <div class="name-label">Ваше имя в игре:</div>
-                    <input type="text" class="name-input" id="player-name-input" value="Игрок" maxlength="12">
-                </div>
+  <!-- Чат -->
+  <div id="chat" class="collapsed">
+    <div class="chat-head" onclick="document.getElementById('chat').classList.toggle('collapsed')">
+      <b>💬 ЧАТ</b>
+      <span style="font-size:10px;color:var(--muted)">▼</span>
+    </div>
+    <div class="chat-body">
+      <div class="chat-log" id="chatLog"></div>
+      <div class="chat-quick">
+        <button onclick="quickChat('Класс!')">Класс!</button>
+        <button onclick="quickChat('Повезло')">Повезло</button>
+        <button onclick="quickChat('Беру!')">Беру!</button>
+        <button onclick="quickChat('Ха-ха')">Ха-ха</button>
+      </div>
+      <input class="chat-input" id="chatInput" placeholder="Сообщение…" maxlength="150">
+    </div>
+  </div>
 
-                <div class="players-select-box">
-                    <div class="p-opt active" onclick="setCount(2)">
-                        <div class="p-opt-icon">2</div>
-                        <div class="p-opt-lbl">Вдвоем</div>
-                    </div>
-                    <div class="p-opt" onclick="setCount(3)">
-                        <div class="p-opt-icon">3</div>
-                        <div class="p-opt-lbl">Втроем</div>
-                    </div>
-                    <div class="p-opt" onclick="setCount(4)">
-                        <div class="p-opt-icon">4</div>
-                        <div class="p-opt-lbl">Вчетвером</div>
-                    </div>
-                </div>
+  <!-- Настройки -->
+  <div id="settings">
+    <h3>⚙ НАСТРОЙКИ</h3>
 
-                <button class="btn-start" onclick="playWithBots()">🤖 Играть с ботами</button>
-                <button class="btn-start" style="background:#2ecc71; color:#fff;" onclick="createRoom()">✨ Создать комнату</button>
-
-                <div id="menu-room-code-box" onclick="copyRoomCodeFromMenu()">
-                    <div class="menu-room-code-title">Код созданной комнаты</div>
-                    <div class="menu-room-code-value" id="menu-room-code-text">------</div>
-                    <div class="menu-room-code-hint">Нажмите на код, чтобы скопировать и отправить другу</div>
-                </div>
-
-                <div class="menu-divider"></div>
-
-                <div class="room-join-row">
-                    <input type="text" class="room-input" id="room-code" placeholder="Код комнаты" maxlength="6">
-                    <button class="btn-start" style="width: auto; padding: 9px 18px;" onclick="joinRoom()">Войти</button>
-                </div>
-
-                <div id="lobby-status" style="font-size: 11px; color: #f1c40f; text-align: center; min-height: 14px;"></div>
-
-                <button class="btn-rules" id="rulesBtn">📖 Правила игры</button>
-
-                <div class="sani-group-badge" id="authorCardBtn">
-                    <div class="sani-logo-icon">♠</div>
-                    <div class="sani-info">
-                        <div class="sani-subtitle">Основатели игры</div>
-                        <div class="sani-title">SANI GROUP</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Модалка правил -->
-        <div class="custom-modal" id="rulesModal">
-            <div class="custom-modal-content">
-                <span class="custom-close-btn" id="closeRulesBtn">&times;</span>
-                <h3 style="color:#f1c40f; margin-top:0;">Правила игры «Дурак»</h3>
-                <div class="rules-text">
-                    <ul>
-                        <li><strong>Цель:</strong> Избавиться от всех карт. Тот, кто остался с картами в конце — проиграл («дурак»).</li>
-                        <li><strong>Козырь:</strong> Масть карты под колодой определяет козырь. Козыри бьют любые другие масти.</li>
-                        <li><strong>Первый ход:</strong> делает игрок с младшим козырем на руках.</li>
-                        <li><strong>Атака и Защита:</strong> Атакующий ходит картой, защищающийся обязан побить её старшей картой той же масти или козырем.</li>
-                        <li><strong>Подкидывание:</strong> Можно подкидывать карты, достоинство которых уже присутствует на столе.</li>
-                        <li><strong>Взять / Бито:</strong> Если отбиться не получается, нажмите «БЕРУ» и заберите карты. Если всё отбито, нажмите «БИТО».</li>
-                    </ul>
-                </div>
-            </div>
-        </div>
-
-        <!-- Модалка авторов -->
-        <div class="custom-modal" id="authorModal">
-            <div class="custom-modal-content sani-modal-content">
-                <span class="custom-close-btn" id="closeAuthorBtn">&times;</span>
-                <div class="sani-modal-header">
-                    <div class="sani-big-logo">♠♥♦♣</div>
-                    <h2>SANI GROUP</h2>
-                    <div class="sani-tagline">Команда основателей и разработчиков</div>
-                </div>
-                <div class="sani-modal-body">
-                    <p>Мы создали эту интерактивную версию культовой карточной игры, чтобы вы могли с комфортом играть по сети с друзьями или соревноваться с умными ботами.</p>
-                    <div class="sani-team-creed">
-                        <span>⚡ Стабильный сокет</span>
-                        <span>🎨 Стильный дизайн</span>
-                        <span>🎮 Честный рандом</span>
-                    </div>
-                    <div class="sani-copyright">© SANI GROUP Studio. Все права защищены.</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Модалка подтверждения выхода в меню -->
-        <div class="custom-modal" id="confirmMenuModal">
-            <div class="custom-modal-content" style="text-align: center;">
-                <h3 style="color:#f1c40f; margin-top:0;">Выход в меню</h3>
-                <p style="color:#cbd5e1; font-size:13px;">Вы действительно хотите покинуть текущую партию и вернуться в главное меню?</p>
-                <div class="confirm-modal-btns">
-                    <button class="btn-confirm-yes" onclick="executeExitToMenu()">Да, выйти</button>
-                    <button class="btn-confirm-no" onclick="closeConfirmMenuModal()">Отмена</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Модалка конца игры -->
-        <div id="game-over-modal">
-            <div class="modal-card">
-                <div class="modal-title" id="go-title">Игра окончена</div>
-                <div class="modal-subtitle" id="go-desc">Результат партии</div>
-                <button class="btn-rematch" id="btn-rematch" onclick="voteRematch()">ИГРАТЬ СНОВА (РЕВАНШ)</button>
-                <div class="rematch-status" id="rematch-counter"></div>
-                <button class="btn-rules" style="margin-top:5px;" onclick="location.reload()">В главное меню</button>
-            </div>
-        </div>
+    <div class="sect">
+      <h4>Тема стола</h4>
+      <div class="theme-grid">
+        <button class="theme-btn active" data-theme="royal-gold" data-name="Royal"
+          style="background:linear-gradient(135deg,#0a5b35,#f4d27a)" onclick="setTheme('royal-gold')"></button>
+        <button class="theme-btn" data-theme="forest" data-name="Forest"
+          style="background:linear-gradient(135deg,#2d5a32,#d4a95c)" onclick="setTheme('forest')"></button>
+        <button class="theme-btn" data-theme="artdeco" data-name="Deco"
+          style="background:linear-gradient(135deg,#000,#e0b552)" onclick="setTheme('artdeco')"></button>
+        <button class="theme-btn" data-theme="neon" data-name="Neon"
+          style="background:linear-gradient(135deg,#1a0b3d,#c34bff)" onclick="setTheme('neon')"></button>
+        <button class="theme-btn" data-theme="ocean" data-name="Ocean"
+          style="background:linear-gradient(135deg,#073a52,#5fe0d8)" onclick="setTheme('ocean')"></button>
+        <button class="theme-btn" data-theme="esports" data-name="Esports"
+          style="background:linear-gradient(135deg,#0e1220,#a3ff2b)" onclick="setTheme('esports')"></button>
+      </div>
     </div>
 
-    <script>
-        const socket = io();
-        let selectedMaxPlayers = 2;
-        let currentRoomCode = null;
-        let gameState = null;
-        let isMultiplayerRoom = false;
-        let chatUnreadCount = 0;
-        let chatPanelOpen = false;
+    <div class="sect">
+      <h4>Поведение</h4>
+      <div class="toggle-row">
+        <span>Звук</span>
+        <div class="toggle on" id="tgSound" onclick="toggleSetting('sound')"></div>
+      </div>
+      <div class="toggle-row">
+        <span>Живой фон</span>
+        <div class="toggle on" id="tgAnims" onclick="toggleSetting('anims')"></div>
+      </div>
+      <div class="toggle-row">
+        <span>Таймер хода (30с)</span>
+        <div class="toggle" id="tgTimer" onclick="toggleSetting('timer')"></div>
+      </div>
+      <div class="toggle-row">
+        <span>Эмодзи-панель</span>
+        <div class="toggle on" id="tgEmoji" onclick="toggleSetting('emoji')"></div>
+      </div>
+    </div>
 
-        const bgMusic = new Audio('./theme.mp3');
-        bgMusic.loop = true;
-        let musicOn = false;
+    <div class="sect">
+      <h4>Сортировка руки</h4>
+      <select class="select" id="sortMode" onchange="setSort(this.value)">
+        <option value="trump-right">По мастям · козыри справа</option>
+        <option value="trump-left">По мастям · козыри слева</option>
+      </select>
+    </div>
 
-        function getPlayerName() {
-            const input = document.getElementById('player-name-input');
-            return input ? input.value.trim().substring(0, 12) || 'Игрок' : 'Игрок';
-        }
+    <div class="sect">
+      <h4>Горячие клавиши</h4>
+      <div style="font-size:11px;color:var(--muted);line-height:1.8">
+        <div><b>1–9</b> — сыграть карту по счёту</div>
+        <div><b>Space</b> — Бито / Беру</div>
+        <div><b>Esc</b> — Пас</div>
+      </div>
+    </div>
 
-        const rulesModal = document.getElementById('rulesModal');
-        document.getElementById('rulesBtn').addEventListener('click', () => rulesModal.style.display = 'flex');
-        document.getElementById('closeRulesBtn').addEventListener('click', () => rulesModal.style.display = 'none');
+    <button class="secondary" onclick="toggleSettings()">Закрыть</button>
+  </div>
 
-        const authorModal = document.getElementById('authorModal');
-        document.getElementById('authorCardBtn').addEventListener('click', () => authorModal.style.display = 'flex');
-        document.getElementById('closeAuthorBtn').addEventListener('click', () => authorModal.style.display = 'none');
+  <!-- Лобби -->
+  <div id="lobby" class="lobby">
+    <div class="panel">
+      <div class="hero">
+        <div class="suits">♠ ♥ ♦ ♣</div>
+        <h1>ДУРАК</h1>
+        <p>PREMIUM · SANI GROUP</p>
+      </div>
+      <div class="field">
+        <span class="label">ИМЯ ИГРОКА</span>
+        <input id="name" class="input" maxlength="12" value="Игрок">
+      </div>
+      <div class="mode-grid">
+        <button class="mode" onclick="toggleBotBox()">
+          <strong>🤖 Играть с ботом</strong>
+          <small>Матч 1 + 1</small>
+        </button>
+        <button class="mode" onclick="createRoom()">
+          <strong>🌐 Создать комнату</strong>
+          <small>2–4 игрока онлайн</small>
+        </button>
+      </div>
+      <div class="field">
+        <span class="label">РАЗМЕР СТОЛА</span>
+        <div class="count-grid">
+          <button class="count active" onclick="setPlayers(2,this)">2 игрока</button>
+          <button class="count" onclick="setPlayers(3,this)">3 игрока</button>
+          <button class="count" onclick="setPlayers(4,this)">4 игрока</button>
+        </div>
+      </div>
+      <div id="botBox" style="display:none;margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:12px;background:color-mix(in srgb,var(--accent) 5%,transparent)">
+        <span class="label">СЛОЖНОСТЬ БОТА</span>
+        <div class="count-grid">
+          <button class="count" onclick="setBotDifficulty('easy',this)">🟢 Лёгкий</button>
+          <button class="count active" onclick="setBotDifficulty('normal',this)">🟡 Норм</button>
+          <button class="count" onclick="setBotDifficulty('hard',this)">🔴 Сложный</button>
+        </div>
+        <button class="primary" onclick="playBots()">НАЧАТЬ</button>
+      </div>
+      <div class="divider"></div>
+      <span class="label">ВОЙТИ ПО КОДУ</span>
+      <div class="row">
+        <input id="code" class="input" maxlength="4" placeholder="0000"
+               inputmode="numeric" pattern="\d{4}" style="text-align:center;letter-spacing:8px;font-size:20px;font-weight:900">
+        <button class="primary" style="margin:0;max-width:120px" onclick="joinRoom()">ВОЙТИ</button>
+      </div>
+      <div id="roomBox">
+        <span class="label">КОД КОМНАТЫ</span>
+        <div id="roomCode" onclick="copyCode()">----</div>
+      </div>
+      <div id="lobbyStatus" class="status"></div>
+      <button class="secondary" onclick="openModal('rules')">📖 Правила</button>
+      <button class="secondary" onclick="openModal('about')">♠ SANI GROUP</button>
+      <div class="sani">Premium Card Games · <b>SANI GROUP</b></div>
+    </div>
+  </div>
 
-        const confirmMenuModal = document.getElementById('confirmMenuModal');
-        function confirmExitToMenu() {
-            if (!gameState) {
-                hideMenuRoomCode();
-                return;
-            }
-            confirmMenuModal.style.display = 'flex';
-        }
-        function closeConfirmMenuModal() {
-            confirmMenuModal.style.display = 'none';
-        }
-        function executeExitToMenu() {
-            confirmMenuModal.style.display = 'none';
-            if (currentRoomCode) {
-                socket.emit('leave_room', currentRoomCode);
-            }
-            location.reload();
-        }
+  <!-- Модалки -->
+  <div id="modal-rules" class="modal-layer" onclick="layerClick(event,'rules')">
+    <div class="modal">
+      <button class="close" onclick="closeModal('rules')">×</button>
+      <h2>Правила «Дурака»</h2>
+      <ul>
+        <li>Колода 36 карт, по 6 каждому. Козырь — нижняя карта колоды.</li>
+        <li>Первым ходит игрок с младшим козырем.</li>
+        <li>Атака — картами тех достоинств, что уже на столе.</li>
+        <li>Отбив — старшая той же масти или козырь. Козырь бьётся только старшим козырем.</li>
+        <li>«БЕРУ» — защищающийся забирает все карты со стола.</li>
+        <li>После «БЕРУ» атакующий может ещё подкинуть карты того же достоинства.</li>
+        <li>«БИТО» — все отбито, атака завершена.</li>
+        <li>Добор — до 6 карт, пока есть колода.</li>
+        <li>Проиграл тот, у кого остались карты.</li>
+      </ul>
+    </div>
+  </div>
+  <div id="modal-about" class="modal-layer" onclick="layerClick(event,'about')">
+    <div class="modal" style="text-align:center">
+      <button class="close" onclick="closeModal('about')">×</button>
+      <div style="font-size:32px;color:var(--accent)">♠ ♥ ♦ ♣</div>
+      <h2>SANI GROUP</h2>
+      <p>Premium Card Games Studio</p>
+      <p style="color:var(--muted);font-size:11px">© SANI GROUP Studio</p>
+    </div>
+  </div>
+  <div id="modal-confirm" class="modal-layer" onclick="layerClick(event,'confirm')">
+    <div class="modal" style="text-align:center">
+      <h2>Выйти?</h2>
+      <p>Партия будет завершена.</p>
+      <div class="row">
+        <button class="secondary" style="margin:0" onclick="closeModal('confirm')">ОСТАТЬСЯ</button>
+        <button class="primary" style="margin:0" onclick="exitGame()">ВЫЙТИ</button>
+      </div>
+    </div>
+  </div>
+  <div id="modal-victory" class="modal-layer">
+    <div class="modal result">
+      <div style="font-size:32px">🏆</div>
+      <div id="resultBig" class="big">ПОБЕДА!</div>
+      <div id="resultStats" style="font-size:12px;color:var(--muted);margin:10px 0 18px;line-height:1.7"></div>
+      <button id="rematch" class="primary" onclick="voteRematch()">ИГРАТЬ СНОВА</button>
+      <div id="rematchStatus" class="status"></div>
+      <button class="secondary" onclick="exitGame()">В МЕНЮ</button>
+    </div>
+  </div>
 
-        window.addEventListener('click', (e) => {
-            if (e.target === rulesModal) rulesModal.style.display = 'none';
-            if (e.target === authorModal) authorModal.style.display = 'none';
-            if (e.target === confirmMenuModal) confirmMenuModal.style.display = 'none';
-        });
+  <div id="toast"></div>
+</div>
 
-        function toggleMusic() {
-            musicOn = !musicOn;
-            const label = document.getElementById('music-label');
-            if (musicOn) {
-                bgMusic.play().catch(() => {});
-                if (label) label.innerText = 'Звук: ВКЛ';
-            } else {
-                bgMusic.pause();
-                if (label) label.innerText = 'Звук: ВЫКЛ';
-            }
-        }
+<script>
+/* ============================================================
+   ГЛОБАЛЬНОЕ СОСТОЯНИЕ
+   ============================================================ */
+const socket = io();
+let state = null;
+let roomCode = null;
+let myId = null;
+let gameMode = null;
+let playerCount = 2;
+let botDifficulty = 'normal';
+let rematchVoted = false;
+let serverTurnStart = 0;
+let timerRAF = null;
 
-        function setCount(num) {
-            selectedMaxPlayers = num;
-            document.querySelectorAll('.p-opt').forEach((el, idx) => {
-                el.classList.toggle('active', idx + 2 === num);
-            });
-        }
+const S = {
+  sound: true,
+  anims: true,
+  timer: false,
+  emoji: true,
+  sort: 'trump-right',
+  theme: 'royal-gold'
+};
 
-        function playWithBots() {
-            disableChat();
-            hideMenuRoomCode();
-            const name = getPlayerName();
-            socket.emit('play_with_bots', { maxPlayers: selectedMaxPlayers, playerName: name });
-        }
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 
-        function createRoom() {
-            const name = getPlayerName();
-            socket.emit('create_room', { maxPlayers: selectedMaxPlayers, playerName: name });
-        }
+/* ============================================================
+   НАСТРОЙКИ — localStorage
+   ============================================================ */
+function loadSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('sani-durak') || '{}');
+    Object.assign(S, saved);
+  } catch {}
+  applySettings();
+}
+function saveSettings() {
+  try { localStorage.setItem('sani-durak', JSON.stringify(S)); } catch {}
+}
+function applySettings() {
+  document.documentElement.setAttribute('data-theme', S.theme);
+  document.body.classList.toggle('no-anim', !S.anims);
+  $('soundBtn').textContent = S.sound ? '🔊' : '🔇';
+  $('tgSound').classList.toggle('on', S.sound);
+  $('tgAnims').classList.toggle('on', S.anims);
+  $('tgTimer').classList.toggle('on', S.timer);
+  $('tgEmoji').classList.toggle('on', S.emoji);
+  $('sortMode').value = S.sort;
+  document.querySelectorAll('.theme-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.theme === S.theme);
+  });
+  if (!S.emoji) $('emojiBar').style.display = 'none';
+}
+function setTheme(t) { S.theme = t; saveSettings(); applySettings(); }
+function setSort(v) { S.sort = v; saveSettings(); if (state) render(); }
+function toggleSetting(k) {
+  S[k] = !S[k];
+  saveSettings();
+  applySettings();
+  if (k === 'sound' && S.sound) sfx('click');
+}
+function toggleSound() { toggleSetting('sound'); }
+function toggleSettings() { $('settings').classList.toggle('open'); }
 
-        function joinRoom() {
-            const input = document.getElementById('room-code');
-            const code = input.value.trim().toUpperCase();
-            const name = getPlayerName();
-            if (code) {
-                currentRoomCode = code;
-                socket.emit('join_room', { roomCode: code, playerName: name });
-            }
-        }
+/* ============================================================
+   ЗВУК — Web Audio API
+   ============================================================ */
+let audioCtx = null;
+function ac() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+function beep(freq, dur, type = 'sine', vol = .08) {
+  if (!S.sound) return;
+  try {
+    const c = ac();
+    const o = c.createOscillator();
+    const g = c.createGain();
+    o.type = type;
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(.0001, c.currentTime + dur);
+    o.connect(g); g.connect(c.destination);
+    o.start(); o.stop(c.currentTime + dur);
+  } catch {}
+}
+function sfx(type) {
+  if (!S.sound) return;
+  switch (type) {
+    case 'click': beep(880, .06, 'triangle', .06); break;
+    case 'card':  beep(320, .08, 'square', .05); break;
+    case 'hit':   beep(180, .07, 'square', .05); setTimeout(() => beep(260, .05, 'square', .04), 40); break;
+    case 'take':  beep(200, .12, 'sawtooth', .05); break;
+    case 'bit':   beep(660, .12, 'triangle', .07); setTimeout(() => beep(990, .15, 'triangle', .06), 60); break;
+    case 'win':   [523,659,784,1046].forEach((f, i) => setTimeout(() => beep(f, .18, 'triangle', .08), i * 90)); break;
+    case 'lose':  [440,392,330,262].forEach((f, i) => setTimeout(() => beep(f, .2, 'sine', .07), i * 110)); break;
+  }
+}
 
-        function showRoomCode(code) {
-            const display = document.getElementById('room-code-display');
-            const value = document.getElementById('r-code-val');
-            const menuCodeBox = document.getElementById('menu-room-code-box');
-            const menuCodeText = document.getElementById('menu-room-code-text');
-            if (code && !code.startsWith('BOTS_')) {
-                if (display && value) {
-                    value.innerText = code;
-                    display.style.display = 'inline';
-                }
-                if (menuCodeBox && menuCodeText) {
-                    menuCodeText.innerText = code;
-                    menuCodeBox.style.display = 'block';
-                }
-                enableChat();
-            } else {
-                disableChat();
-                hideMenuRoomCode();
-            }
-        }
+/* ============================================================
+   SVG-МАСТИ
+   ============================================================ */
+const SUIT_PATHS = {
+  '♠': '<path d="M12 2 C6 8 2 12 2 16 c0 2 1.5 4 4 4 1.5 0 3-.8 3.8-2 -.3 3-1.5 4.5-3.8 6 h12 c-2.3-1.5-3.5-3-3.8-6 .8 1.2 2.3 2 3.8 2 2.5 0 4-2 4-4 0-4-4-8-10-14 z"/>',
+  '♥': '<path d="M12 21 C4 14 2 10 2 7 c0-3 2-5 5-5 2 0 4 1 5 3 1-2 3-3 5-3 3 0 5 2 5 5 0 3-2 7-10 14 z"/>',
+  '♦': '<path d="M12 2 L22 12 L12 22 L2 12 z"/>',
+  '♣': '<path d="M12 2 c-3 0-5 2-5 4 0 1.5.7 2.5 1.5 3 -2 .3-3.5 1.5-3.5 3.5 0 2 1.5 3.5 3.5 3.5 .8 0 1.5-.3 2-.7 -.3 2.5-1.5 4-3.5 5.2 h12 c-2-1.2-3.2-2.7-3.5-5.2 .5.4 1.2.7 2 .7 2 0 3.5-1.5 3.5-3.5 0-2-1.5-3.2-3.5-3.5 .8-.5 1.5-1.5 1.5-3 0-2-2-4-5-4-1 0-1.5.3-2 .8 -.5-.5-1-.8-2-.8 z"/>'
+};
+function suitSVG(suit, size = 24) {
+  return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="currentColor">${SUIT_PATHS[suit] || ''}</svg>`;
+}
 
-        function hideMenuRoomCode() {
-            const menuCodeBox = document.getElementById('menu-room-code-box');
-            if (menuCodeBox) menuCodeBox.style.display = 'none';
-        }
+/* ============================================================
+   PIP-РАСКЛАДКА
+   ============================================================ */
+const PIP_POSITIONS = {
+  1: [[50, 50]],
+  2: [[50, 18], [50, 82]],
+  3: [[50, 18], [50, 50], [50, 82]],
+  4: [[30, 18], [70, 18], [30, 82], [70, 82]],
+  5: [[30, 18], [70, 18], [50, 50], [30, 82], [70, 82]],
+  6: [[30, 18], [70, 18], [30, 50], [70, 50], [30, 82], [70, 82]],
+  7: [[30, 18], [70, 18], [50, 34], [30, 50], [70, 50], [30, 82], [70, 82]],
+  8: [[30, 18], [70, 18], [50, 34], [30, 50], [70, 50], [50, 66], [30, 82], [70, 82]],
+  9: [[30, 18], [70, 18], [30, 40], [70, 40], [50, 50], [30, 60], [70, 60], [30, 82], [70, 82]],
+  10:[[30, 18], [70, 18], [50, 30], [30, 42], [70, 42], [30, 58], [70, 58], [50, 70], [30, 82], [70, 82]]
+};
 
-        function copyRoomCodeFromMenu() {
-            const menuCodeText = document.getElementById('menu-room-code-text');
-            if (menuCodeText) {
-                const code = menuCodeText.innerText;
-                if (code && code !== '------') {
-                    navigator.clipboard.writeText(code).then(() => {
-                        const oldColor = menuCodeText.style.color;
-                        menuCodeText.style.color = '#2ecc71';
-                        setTimeout(() => menuCodeText.style.color = oldColor, 1000);
-                    });
-                }
-            }
-        }
+/* ============================================================
+   КАРТА — рендер
+   ============================================================ */
+function cardHTML(c, extra = '') {
+  if (!c || c.rank == null) return '';
+  const isRed = c.suit === '♥' || c.suit === '♦';
+  const isFace = ['J', 'Q', 'K'].includes(String(c.rank));
+  const cls = ['card', isRed ? 'red' : '', isFace ? 'face' : '', extra].filter(Boolean).join(' ');
 
-        function enableChat() {
-            isMultiplayerRoom = true;
-            const btn = document.getElementById('chat-toggle-btn');
-            if (btn) btn.style.display = 'flex';
-        }
+  let center = '';
+  if (isFace) {
+    center = `<div class="face-letter">${esc(c.rank)}</div>`;
+  } else {
+    const r = String(c.rank);
+    const map = { '6':6, '7':7, '8':8, '9':9, '10':10, 'A':1 };
+    const n = map[r] || 1;
+    const pos = PIP_POSITIONS[n] || PIP_POSITIONS[1];
+    const isAce = n === 1;
+    const pips = pos.map(([x, y]) =>
+      `<span class="pip" style="left:${x}%;top:${y}%;width:${isAce ? 55 : 26}%;height:${isAce ? 55 : 26}%">${suitSVG(c.suit, 24)}</span>`
+    ).join('');
+    center = `<div class="pips">${pips}</div>`;
+  }
 
-        function disableChat() {
-            isMultiplayerRoom = false;
-            const btn = document.getElementById('chat-toggle-btn');
-            const panel = document.getElementById('chat-panel');
-            if (btn) btn.style.display = 'none';
-            if (panel) panel.classList.remove('open');
-        }
+  const corners = `
+    <div class="corner"><b>${esc(c.rank)}</b>${suitSVG(c.suit, 12)}</div>
+    <div class="corner bottom"><b>${esc(c.rank)}</b>${suitSVG(c.suit, 12)}</div>`;
+  return `<div class="${cls}" data-id="${esc(c.id)}">${corners}${center}</div>`;
+}
 
-        socket.on('room_created', (data) => {
-            currentRoomCode = data.code;
-            showRoomCode(data.code);
-            document.getElementById('lobby-status').innerText = `Комната создана. Игроков: 1 / ${data.maxPlayers}`;
-            document.getElementById('main-menu').style.display = 'flex';
-        });
+function backHTML() {
+  return `<div class="card back"></div>`;
+}
 
-        socket.on('lobby_update', (data) => {
-            currentRoomCode = data.code;
-            showRoomCode(data.code);
-            document.getElementById('main-menu').style.display = 'flex';
-            document.getElementById('lobby-status').innerText = `Ожидание игроков: ${data.current} / ${data.max}`;
-        });
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render() {
+  if (!state) return;
+  const ps = state.playersInfo || [];
+  const me = ps.find(p => p.isYou);
+  if (!me) return;
+  myId = me.id;
 
-        socket.on('game_update', (state) => {
-            document.getElementById('main-menu').style.display = 'none';
-            document.getElementById('deck-area').style.display = 'flex';
-            gameState = state;
-            if (state.roomCode) {
-                currentRoomCode = state.roomCode;
-                showRoomCode(state.roomCode);
-            }
-            render();
-        });
+  // Сидения
+  ['seat-top','seat-left','seat-right'].forEach(id => $(id).style.display = 'none');
+  const myIdx = ps.findIndex(p => p.id === myId);
+  const others = [];
+  for (let i = 1; i < ps.length; i++) {
+    const idx = (myIdx + i) % ps.length;
+    others.push({ p: ps[idx], idx });
+  }
+  const slots = ps.length === 2 ? ['seat-top']
+    : ps.length === 3 ? ['seat-left','seat-right']
+    : ['seat-left','seat-top','seat-right'];
 
-        socket.on('error_msg', (msg) => { alert(msg); });
-        socket.on('opponent_disconnected', () => {
-            alert('Соперник отключился. Комната закрыта.');
-            location.reload();
-        });
-        socket.on('chat_message', (data) => { appendChatMessage(data); });
+  others.forEach((o, i) => {
+    const el = $(slots[i]);
+    if (!el) return;
+    el.style.display = 'flex';
+    const count = (state.hands[o.p.id] || []).length;
+    const isTurn = state.currentThrowerIdx === o.idx;
+    const isDef = state.defenderIdx === o.idx;
+    const initials = (o.p.name || '?').slice(0, 1).toUpperCase();
+    const backs = Array(count).fill(0).map(() => backHTML()).join('');
+    el.innerHTML = `
+      <div class="profile">
+        <div class="avatar ${o.p.isBot ? 'bot' : ''}">${esc(initials)}${isTurn ? '<div class="turn-ring"></div>' : ''}</div>
+        <div class="name">${esc(o.p.name)}</div>
+        <div class="role">${isDef ? 'ЗАЩИЩАЕТСЯ' : isTurn ? 'ХОДИТ' : 'СОПЕРНИК'}</div>
+      </div>
+      <div class="opp-hand">${backs}</div>`;
+  });
 
-        function toggleChat() {
-            const panel = document.getElementById('chat-panel');
-            if (!panel) return;
-            chatPanelOpen = !chatPanelOpen;
-            panel.classList.toggle('open', chatPanelOpen);
-            if (chatPanelOpen) {
-                chatUnreadCount = 0;
-                updateChatBadge();
-                const input = document.getElementById('chat-input');
-                if (input) input.focus();
-                const messages = document.getElementById('chat-messages');
-                if (messages) messages.scrollTop = messages.scrollHeight;
-            }
-        }
+  // Колода и козырь
+  const deckLeft = (state.deck || []).length;
+  $('deckCount').textContent = deckLeft;
+  $('deck').style.display = deckLeft ? 'block' : 'none';
+  $('trump').style.display = deckLeft && state.trumpCard ? 'block' : 'none';
+  $('trump').innerHTML = state.trumpCard ? cardHTML(state.trumpCard) : '';
 
-        function updateChatBadge() {
-            const badge = document.getElementById('chat-unread-badge');
-            if (!badge) return;
-            if (chatUnreadCount > 0) {
-                badge.innerText = chatUnreadCount > 9 ? '9+' : String(chatUnreadCount);
-                badge.style.display = 'inline-block';
-            } else {
-                badge.style.display = 'none';
-            }
-        }
+  // Пары на столе
+  const pairs = $('pairs');
+  pairs.innerHTML = (state.table || []).map(pair =>
+    `<div class="pair">${cardHTML(pair.attack)}${pair.defense ? cardHTML(pair.defense, 'def') : ''}</div>`
+  ).join('');
 
-        function appendChatMessage(data) {
-            const messages = document.getElementById('chat-messages');
-            if (!messages) return;
-            const isMe = data.senderId === socket.id;
-            const wrap = document.createElement('div');
-            wrap.innerHTML = `<span class="chat-msg-sender${isMe ? ' me' : ''}">${escapeHTML(isMe ? 'Вы' : data.senderName)}:</span> <span class="chat-msg-text">${escapeHTML(data.message)}</span>`;
-            messages.appendChild(wrap);
-            messages.scrollTop = messages.scrollHeight;
-            if (!chatPanelOpen) {
-                chatUnreadCount++;
-                updateChatBadge();
-            }
-        }
+  // Рука
+  const hand = state.hands[myId] || [];
+  const tableRanks = new Set((state.table || []).flatMap(x =>
+    [x.attack?.rank, x.defense?.rank].filter(Boolean)
+  ));
+  const isDefender = state.defenderIdx === myIdx;
+  const isThrower = state.currentThrowerIdx === myIdx;
+  const tableEmpty = (state.table || []).length === 0;
+  const allDefended = (state.table || []).length > 0 && state.table.every(x => x.defense);
+  const pendingTake = !!state.pendingTake;
+  // Лимит фиксируется в начале боя. Не пересчитываем его по текущей
+  // руке защитника: он может потратить карты на отбивку во время боя.
+  const maxTableCards = Number.isFinite(state.attackLimit)
+    ? state.attackLimit
+    : Math.min(6, state.players?.[state.defenderIdx]?.id ? (state.hands[state.players[state.defenderIdx].id] || []).length : 0);
+  const throwLimitReached = (state.table || []).length >= maxTableCards;
 
-        function sendChatMessage() {
-            if (!isMultiplayerRoom) return;
-            const input = document.getElementById('chat-input');
-            if (!input) return;
-            const message = input.value.trim();
-            if (!message) return;
-            const rCode = currentRoomCode || (gameState && gameState.roomCode);
-            if (!rCode) return;
-            socket.emit('send_message', { roomCode: rCode, message });
-            input.value = '';
-        }
-        document.getElementById('chat-input').addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') sendChatMessage();
-        });
+  const sorted = [...hand].sort((a, b) => {
+    const aT = a.suit === state.trumpSuit ? 1 : 0;
+    const bT = b.suit === state.trumpSuit ? 1 : 0;
+    if (S.sort === 'trump-left') {
+      if (aT !== bT) return bT - aT;
+    } else {
+      if (aT !== bT) return aT - bT;
+    }
+    return a.value - b.value;
+  });
 
-        socket.on('game_over', (data) => {
-            const titleEl = document.getElementById('go-title');
-            const descEl = document.getElementById('go-desc');
-            if (data.winner === socket.id) {
-                titleEl.innerText = 'ПОБЕДА!';
-                descEl.innerText = 'Вы выиграли эту партию!';
-            } else if (data.winner) {
-                titleEl.innerText = 'ПОРАЖЕНИЕ';
-                descEl.innerText = 'Вы остались в дураках...';
-            } else {
-                titleEl.innerText = 'НИЧЬЯ';
-                descEl.innerText = 'Партия закончилась вничью.';
-            }
-            const btn = document.getElementById('btn-rematch');
-            btn.disabled = false;
-            btn.style.opacity = '1';
-            document.getElementById('game-over-modal').style.display = 'flex';
-        });
+  const handEl = $('hand');
+  handEl.innerHTML = sorted.map(c => {
+    let playable = false;
+    if (pendingTake) {
+      playable = !isDefender && isThrower && !throwLimitReached && tableRanks.has(c.rank);
+    } else if (isDefender) {
+      const uncovered = (state.table || []).find(p => !p.defense);
+      playable = uncovered && canBeat(uncovered.attack, c, state.trumpSuit);
+    } else if (tableEmpty) {
+      playable = isThrower;
+    } else if (isThrower && allDefended) {
+      playable = !throwLimitReached && tableRanks.has(c.rank);
+    }
+    const cardCls = playable ? 'playable' : 'disabled';
+    const wrapCls = playable ? 'wrap can-play' : 'wrap';
+    const click = playable ? `onclick="playCard(${Number(c.id)})"` : '';
+    return `<div class="${wrapCls}" ${click}>${cardHTML(c, cardCls)}</div>`;
+  }).join('');
 
-        socket.on('rematch_timer', (timeLeft) => {
-            document.getElementById('rematch-counter').innerText = `Авто-выход через: ${timeLeft}с`;
-        });
-        socket.on('rematch_voted', (data) => {
-            document.getElementById('rematch-counter').innerText = `Голосов за реванш: ${data.votesCount} / ${data.totalNeeded}`;
-        });
-        socket.on('game_restarted', () => {
-            document.getElementById('game-over-modal').style.display = 'none';
-            const btn = document.getElementById('btn-rematch');
-            btn.disabled = false;
-            btn.style.opacity = '1';
-        });
-        socket.on('room_expired', () => {
-            alert('Время реванша истекло. Комната закрыта.');
-            location.reload();
-        });
+  // Веер
+  const wraps = handEl.querySelectorAll('.wrap');
+  const count = wraps.length;
+  const cardW = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--cw')) || 78;
+  const containerW = handEl.clientWidth || Math.min(1080, window.innerWidth * .97);
+  const available = containerW - cardW;
+  let overlap = count > 1 ? Math.min(cardW * .5, Math.max(cardW * .15, available / (count - 1))) : 0;
+  if (count <= 6) overlap = Math.max(overlap, cardW * .45);
+  wraps.forEach((w, i) => {
+    if (i === 0) { w.style.marginLeft = '0'; }
+    else { w.style.marginLeft = `-${overlap}px`; }
+    const angle = count > 1 ? (i - (count - 1) / 2) * 16 / (count - 1) : 0;
+    const y = Math.abs(angle) * .6;
+    w.style.transform = `rotate(${angle}deg) translateY(${y}px)`;
+  });
 
-        function voteRematch() {
-            const rCode = currentRoomCode || (gameState && gameState.roomCode);
-            if (!rCode) return;
-            socket.emit('vote_rematch', rCode);
-            const btn = document.getElementById('btn-rematch');
-            btn.disabled = true;
-            btn.style.opacity = '0.5';
-            document.getElementById('rematch-counter').innerText = 'Вы проголосовали! Ожидание остальных...';
-        }
+  // Сообщение + заголовок хода
+  let msg = 'Ожидание…';
+  let turnText = 'ОЖИДАНИЕ';
 
-        const CARD_RANK_CODE = { '6': '6', '7': '7', '8': '8', '9': '9', '10': '0', 'J': 'J', 'Q': 'Q', 'K': 'K', 'A': 'A' };
-        const CARD_SUIT_CODE = { '♠': 'S', '♥': 'H', '♦': 'D', '♣': 'C' };
+  if (pendingTake) {
+    if (isThrower) {
+      if (throwLimitReached) {
+        msg = 'Больше подкидывать нельзя — нажмите ЗАВЕРШИТЬ';
+        turnText = 'ЗАВЕРШЕНИЕ АТАКИ';
+      } else {
+        msg = 'Защитник забирает. Подкиньте карту или нажмите ЗАВЕРШИТЬ';
+        turnText = 'ПОДКИДЫВАЙТЕ';
+      }
+    } else {
+      msg = 'Соперник забирает. Ждём подкидывания…';
+      turnText = 'ЗАБИРАЕТЕ';
+    }
+  } else if (isDefender && !tableEmpty) {
+    msg = 'Защита: выберите карту или нажмите БЕРУ';
+    turnText = 'ВАША ЗАЩИТА';
+  } else if (tableEmpty && isThrower) {
+    msg = 'Ваш ход: выберите карту для атаки';
+    turnText = 'ВАШ ХОД';
+  } else if (!tableEmpty && isThrower && allDefended) {
+    if (throwLimitReached) {
+      msg = 'Больше подкидывать нельзя — нажмите БИТО';
+      turnText = 'АТАКА ЗАВЕРШЕНА';
+    } else {
+      msg = 'Подкиньте карту или нажмите БИТО';
+      turnText = 'ВАША АТАКА';
+    }
+  } else if (!tableEmpty) {
+    msg = 'Идёт розыгрыш…';
+    turnText = 'ХОД СОПЕРНИКА';
+  } else {
+    msg = 'Ход соперника…';
+    turnText = 'ХОД СОПЕРНИКА';
+  }
+  $('message').textContent = msg;
+  $('turnLabel').textContent = turnText;
 
-        function cardImageUrl(card) {
-            const r = CARD_RANK_CODE[card.rank] || card.rank;
-            const s = CARD_SUIT_CODE[card.suit] || '';
-            return `https://deckofcardsapi.com/static/img/${r}${s}.png`;
-        }
+  // Кнопки
+  $('take').style.display = (isDefender && !tableEmpty && !pendingTake) ? 'block' : 'none';
+  $('done').style.display = (!isDefender && allDefended && isThrower && !pendingTake) ? 'block' : 'none';
 
-        function renderCardHTML(card) {
-            if (!card || !card.rank || !card.suit) return '';
-            const url = cardImageUrl(card);
-            const label = `${card.rank}${card.suit}`;
-            return `<div class="card-css"><img class="card-face-img" src="${url}" alt="${escapeHTML(label)}" draggable="false"></div>`;
-        }
+  const showPass = !isDefender && isThrower && !tableEmpty &&
+    (pendingTake || (allDefended && ps.length > 2));
+  $('pass').style.display = showPass ? 'block' : 'none';
+  $('pass').textContent = pendingTake ? 'ЗАВЕРШИТЬ' : 'ПАС';
 
-        function escapeHTML(value) {
-            return String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-        }
+  // Таймер хода
+  if (S.timer && !state.isGameOver) {
+    serverTurnStart = state.turnStartedAt || Date.now();
+    startTurnTimer();
+  }
+}
 
-        function getTableRanks(table) {
-            const ranks = new Set();
-            for (const pair of table) {
-                if (pair.attack) ranks.add(pair.attack.rank);
-                if (pair.defense) ranks.add(pair.defense.rank);
-            }
-            return ranks;
-        }
+function canBeat(att, def, trumpSuit) {
+  const aT = att.suit === trumpSuit;
+  const dT = def.suit === trumpSuit;
+  if (aT && !dT) return false;
+  if (aT && dT) return def.value > att.value;
+  if (!dT) return att.suit === def.suit && def.value > att.value;
+  return true;
+}
 
-        function render() {
-            if (!gameState) return;
-            const myId = socket.id;
-            const pInfo = gameState.playersInfo || [];
-            const myIdx = pInfo.findIndex(p => p.id === myId);
-            if (myIdx === -1) return;
+/* ============================================================
+   ТАЙМЕР ХОДА
+   ============================================================ */
+function startTurnTimer() {
+  if (timerRAF) cancelAnimationFrame(timerRAF);
+  const hud = $('roundHud');
+  if (!hud) return;
+  let bar = hud.querySelector('.turn-timer');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.className = 'turn-timer';
+    hud.appendChild(bar);
+  }
+  const limit = 30000;
+  function tick() {
+    const elapsed = Date.now() - serverTurnStart;
+    const left = Math.max(0, limit - elapsed);
+    bar.style.width = (left / limit * 100) + '%';
+    if (left <= 0) return;
+    timerRAF = requestAnimationFrame(tick);
+  }
+  tick();
+}
 
-            const seats = ['seat-top', 'seat-left', 'seat-right'];
-            seats.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) { el.style.display = 'none'; el.innerHTML = ''; }
-            });
+/* ============================================================
+   ДЕЙСТВИЯ
+   ============================================================ */
+function playCard(cardId) {
+  if (suppressClick) { suppressClick = false; return; }
+  sfx('card');
+  socket.emit('player_action', { roomCode, action: 'play_card', cardId });
+}
+function send(action) {
+  sfx(action === 'take' ? 'take' : action === 'done' ? 'bit' : 'click');
+  socket.emit('player_action', { roomCode, action });
+}
+function sendEmoji(e) {
+  sfx('click');
+  socket.emit('emoji', { roomCode, emoji: e });
+}
+function quickChat(text) {
+  socket.emit('send_message', { roomCode, message: text });
+}
+$('chatInput')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.value.trim()) {
+    socket.emit('send_message', { roomCode, message: e.target.value.trim() });
+    e.target.value = '';
+  }
+});
 
-            let seatMap = [];
-            if (pInfo.length === 2) { seatMap = ['seat-top']; }
-            else if (pInfo.length === 3) { seatMap = ['seat-left', 'seat-right']; }
-            else if (pInfo.length === 4) { seatMap = ['seat-left', 'seat-top', 'seat-right']; }
+/* ============================================================
+   ЛОББИ
+   ============================================================ */
+function name() {
+  return ($('name').value.trim() || 'Игрок').slice(0, 12);
+}
+function setPlayers(n, btn) {
+  playerCount = Math.max(2, Math.min(4, n));
+  document.querySelectorAll('.count-grid .count').forEach(b => {
+    if (b.parentElement.parentElement.id !== 'botBox') b.classList.remove('active');
+  });
+  if (btn) btn.classList.add('active');
+}
+function setBotDifficulty(d, btn) {
+  botDifficulty = d;
+  document.querySelectorAll('#botBox .count').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+function toggleBotBox() {
+  const box = $('botBox');
+  box.style.display = box.style.display === 'block' ? 'none' : 'block';
+}
+function playBots() {
+  gameMode = 'bot';
+  socket.emit('play_with_bots', { playerName: name(), botDifficulty });
+  $('lobbyStatus').textContent = 'Запуск матча…';
+}
+function createRoom() {
+  gameMode = 'online';
+  socket.emit('create_room', { maxPlayers: playerCount, playerName: name() });
+  $('lobbyStatus').textContent = `Создаём стол на ${playerCount} игроков…`;
+}
+function joinRoom() {
+  const c = ($('code').value || '').trim();
+  if (!/^\d{4}$/.test(c)) { toast('Код — 4 цифры'); return; }
+  gameMode = 'online';
+  socket.emit('join_room', { roomCode: c, playerName: name() });
+}
+function copyCode() {
+  if (roomCode) navigator.clipboard?.writeText(roomCode).then(() => toast('Скопировано'));
+}
 
-            let offsetIdx = 0;
-            for (let i = 1; i < pInfo.length; i++) {
-                const targetPlayerIdx = (myIdx + i) % pInfo.length;
-                const p = pInfo[targetPlayerIdx];
-                const seatEl = document.getElementById(seatMap[offsetIdx++]);
-                if (!seatEl) continue;
+/* ============================================================
+   МОДАЛКИ
+   ============================================================ */
+function openModal(id) { $('modal-' + id).classList.add('open'); }
+function closeModal(id) { $('modal-' + id).classList.remove('open'); }
+function layerClick(e, id) { if (e.target.id === 'modal-' + id) closeModal(id); }
+function confirmExit() { if (state || roomCode) openModal('confirm'); }
+function exitGame() {
+  if (roomCode) socket.emit('leave_room', roomCode);
+  setTimeout(() => location.reload(), 200);
+}
 
-                const cardCount = gameState.hands && gameState.hands[p.id] ? gameState.hands[p.id].length : 0;
-                const isDef = gameState.defenderIdx === targetPlayerIdx;
-                const isCurrentTurn = gameState.currentThrowerIdx === targetPlayerIdx;
+/* ============================================================
+   TOAST
+   ============================================================ */
+function toast(text) {
+  const el = $('toast');
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(window.__toastT);
+  window.__toastT = setTimeout(() => el.classList.remove('show'), 2200);
+}
 
-                let bubbleText = '';
-                let bubbleClass = 'speech-bubble';
-                if (isDef) { bubbleText = 'Кроюсь'; }
-                else if (isCurrentTurn && gameState.table && gameState.table.length > 0) {
-                    bubbleText = 'Подкидывает...';
-                    bubbleClass += ' turn';
-                } else if (gameState.attackerIdx === targetPlayerIdx && (!gameState.table || gameState.table.length === 0)) {
-                    bubbleText = 'Ходит';
-                }
+/* ============================================================
+   SOCKET HANDLERS
+   ============================================================ */
+socket.on('room_created', d => {
+  roomCode = d.code;
+  $('roomPill').style.display = 'block';
+  $('roomPill').textContent = 'КОМНАТА ' + d.code;
+  $('roomBox').style.display = 'block';
+  $('roomCode').textContent = d.code;
+  $('lobbyStatus').textContent = `Ожидание игроков: 1 / ${d.maxPlayers}`;
+});
+socket.on('lobby_update', d => {
+  roomCode = d.code;
+  $('roomPill').style.display = 'block';
+  $('roomPill').textContent = 'КОМНАТА ' + d.code;
+  $('roomBox').style.display = 'block';
+  $('roomCode').textContent = d.code;
+  $('lobbyStatus').textContent = `Игроков: ${d.current} / ${d.max}`;
+});
+socket.on('error_msg', m => toast(m));
+socket.on('opponent_disconnected', () => { toast('Соперник отключился'); setTimeout(() => location.reload(), 1200); });
 
-                const bubbleHTML = bubbleText ? `<div class="${bubbleClass}">${escapeHTML(bubbleText)}</div>` : '';
-                const backCardsHTML = Array(cardCount).fill(0).map(() => '<div class="card-back-css"><div class="back-emblem"><span class="be-suit">♠</span></div></div>').join('');
-                const avatarSeed = encodeURIComponent(p.id);
-                const displayName = p.displayName || p.name || 'Игрок';
+socket.on('game_update', s => {
+  if (!s) return;
+  state = s;
+  roomCode = s.roomCode || roomCode;
+  $('lobby').style.display = 'none';
+  $('center').style.display = 'block';
+  $('myZone').style.display = 'flex';
+  $('statusPill').textContent = 'В ИГРЕ';
+  if (S.emoji) $('emojiBar').style.display = 'flex';
+  if (roomCode && !roomCode.startsWith('BOTS_')) {
+    $('roomPill').style.display = 'block';
+    $('roomPill').textContent = 'КОМНАТА ' + roomCode;
+  }
+  requestAnimationFrame(() => {
+    try { render(); } catch(e) { console.error(e); toast('Ошибка: ' + e.message); }
+  });
+});
 
-                seatEl.innerHTML = `<div class="player-profile">${bubbleHTML}<div class="avatar"><img src="https://api.dicebear.com/7.x/bottts/svg?seed=${avatarSeed}&backgroundType=gradientLinear&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf" alt=""></div><div class="p-name">${escapeHTML(displayName)}</div></div><div class="opp-hand">${backCardsHTML}</div>`;
-                seatEl.style.display = 'flex';
-            }
+socket.on('game_over', d => {
+  const draw = !!d.draw || (d.loser == null && Array.isArray(d.winners) && d.winners.length === (state?.playersInfo?.length || 0));
+  const win = Array.isArray(d.winners) ? d.winners.includes(myId) : d.loser !== myId;
+  $('resultBig').textContent = draw ? 'НИЧЬЯ' : (win ? 'ПОБЕДА!' : 'ПОРАЖЕНИЕ');
+  const stats = state ? `
+    <div>Ходов: <b>${(state.moveLog || []).length}</b></div>
+    <div>Карт в колоде осталось: <b>${state.deck?.length || 0}</b></div>
+    <div>Длительность: <b>${Math.floor((Date.now() - (state.turnStartedAt || Date.now())) / 1000)} сек</b></div>` : '';
+  $('resultStats').innerHTML = stats;
+  $('modal-victory').classList.add('open');
+  $('rematch').disabled = false;
+  rematchVoted = false;
+  if (win) { sfx('win'); confetti(); } else sfx('lose');
+});
 
-            const deckCounter = document.getElementById('deck-counter');
-            if (deckCounter) { deckCounter.innerText = (gameState.deck || []).length; }
+socket.on('rematch_voted', d => {
+  $('rematchStatus').textContent = `Реванш: ${d.votesCount} / ${d.totalNeeded}`;
+});
+socket.on('game_restarted', () => {
+  $('modal-victory').classList.remove('open');
+  rematchVoted = false;
+});
+socket.on('rematch_timer', t => {
+  $('rematchStatus').textContent = `Автозакрытие через ${t} сек`;
+});
+socket.on('room_expired', () => { toast('Комната закрыта'); setTimeout(() => location.reload(), 900); });
 
-            const trumpUnder = document.getElementById('trump-under');
-            if (trumpUnder) {
-                if (gameState.trumpCard && gameState.trumpCard.rank) {
-                    trumpUnder.innerHTML = renderCardHTML(gameState.trumpCard);
-                    trumpUnder.style.display = 'block';
-                } else {
-                    trumpUnder.innerHTML = '';
-                    trumpUnder.style.display = 'none';
-                }
-            }
+socket.on('emoji', ({ playerId, emoji }) => {
+    if (playerId === myId) return;
+    const ps = state?.playersInfo || [];
+    const targetPlayer = ps.find(p => p.id === playerId);
+    if (!targetPlayer) return;
+    const targetIdx = ps.findIndex(p => p.id === playerId);
+    const myIdx = ps.findIndex(p => p.id === myId);
+    if (targetIdx === -1 || myIdx === -1) return;
+    const relativeIdx = (targetIdx - myIdx + ps.length) % ps.length;
+    let seatEl;
+    if (ps.length === 2) {
+      seatEl = $('seat-top');
+    } else if (ps.length === 3) {
+      seatEl = relativeIdx === 1 ? $('seat-left') : $('seat-right');
+    } else {
+      if (relativeIdx === 1) seatEl = $('seat-left');
+      else if (relativeIdx === 2) seatEl = $('seat-top');
+      else seatEl = $('seat-right');
+    }
+    const target = seatEl && seatEl.style.display !== 'none' ? seatEl : $('myZone');
+    if (!target) return;
+    const rect = target.getBoundingClientRect();
+    const el = document.createElement('div');
+    el.className = 'float-emoji';
+    el.textContent = emoji;
+    el.style.left = (rect.left + rect.width / 2) + 'px';
+    el.style.top = (rect.top + 10) + 'px';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 2300);
+  });
 
-            const topCard = document.getElementById('deck-top-card');
-            if (topCard) {
-                topCard.style.display = !gameState.deck || gameState.deck.length === 0 ? 'none' : 'block';
-            }
+socket.on('chat_message', ({ senderName, message }) => {
+  const log = $('chatLog');
+  if (!log) return;
+  const div = document.createElement('div');
+  div.innerHTML = `<span class="who">${esc(senderName)}:</span> ${esc(message)}`;
+  log.appendChild(div);
+  log.scrollTop = log.scrollHeight;
+  $('chat').classList.remove('collapsed');
+});
 
-            const tableArea = document.getElementById('table-area');
-            if (tableArea) {
-                if (!gameState.table || gameState.table.length === 0) {
-                    tableArea.innerHTML = '';
-                } else {
-                    tableArea.innerHTML = gameState.table.map(pair => `<div class="table-pair">${renderCardHTML(pair.attack)}${pair.defense ? renderCardHTML(pair.defense) : ''}</div>`).join('');
-                }
-            }
+/* ============================================================
+   VOTE REMATCH
+   ============================================================ */
+function voteRematch() {
+  if (rematchVoted) return;
+  rematchVoted = true;
+  $('rematch').disabled = true;
+  socket.emit('vote_rematch', roomCode);
+}
 
-            const myHand = gameState.hands && gameState.hands[myId] ? gameState.hands[myId] : [];
-            const myCardsEl = document.getElementById('my-cards-container');
-            if (myCardsEl) {
-                myCardsEl.innerHTML = myHand.map((card, idx) => `<div class="my-card-wrap" onclick="playCard(${idx})">${renderCardHTML(card)}</div>`).join('');
-            }
+/* ============================================================
+   CONFETTI
+   ============================================================ */
+function confetti() {
+  const colors = ['#f4d27a', '#fff0ae', '#42d889', '#5ca9ff', '#e05a5a'];
+  for (let i = 0; i < 60; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.style.left = Math.random() * 100 + 'vw';
+    el.style.background = colors[Math.floor(Math.random() * colors.length)];
+    el.style.animationDuration = (2 + Math.random() * 1.5) + 's';
+    el.style.animationDelay = (Math.random() * .4) + 's';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 4000);
+  }
+}
 
-            const isDefMe = gameState.defenderIdx === myIdx;
-            const isAttMe = gameState.attackerIdx === myIdx;
-            const isMyThrowTurn = gameState.currentThrowerIdx === myIdx;
-            const msg = document.getElementById('msg-box');
-            const table = gameState.table || [];
-            const tableRanks = getTableRanks(table);
-            const hasCardsToThrow = myHand.some(card => tableRanks.has(card.rank));
+/* ============================================================
+   ГОРЯЧИЕ КЛАВИШИ
+   ============================================================ */
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (!state) return;
+  if (e.key >= '1' && e.key <= '9') {
+    const hand = state.hands[myId] || [];
+    const idx = parseInt(e.key) - 1;
+    const sorted = [...hand].sort((a, b) => {
+      const aT = a.suit === state.trumpSuit ? 1 : 0;
+      const bT = b.suit === state.trumpSuit ? 1 : 0;
+      if (aT !== bT) return aT - bT;
+      return a.value - b.value;
+    });
+    if (sorted[idx]) playCard(sorted[idx].id);
+  } else if (e.key === ' ') {
+    e.preventDefault();
+    if ($('take').style.display !== 'none') send('take');
+    else if ($('done').style.display !== 'none') send('done');
+  } else if (e.key === 'Escape') {
+    if ($('pass').style.display !== 'none') send('pass');
+  }
+});
 
-            if (msg) {
-                if (isDefMe) {
-                    msg.innerText = 'Вы защищаетесь! Кликните карту, чтобы побить.';
-                    msg.style.color = '#e74c3c';
-                } else if (table.length > 0) {
-                    if (isMyThrowTurn) {
-                        msg.innerText = 'Ваша очередь подкидывать! Походите или нажмите ПАС / БИТО.';
-                        msg.style.color = '#f1c40f';
-                    } else if (hasCardsToThrow) {
-                        msg.innerText = 'У вас есть подходящие карты для подкидывания (ожидайте очереди).';
-                        msg.style.color = '#f1c40f';
-                    } else {
-                        msg.innerText = 'Стол занят (ход других игроков)...';
-                        msg.style.color = '#a0b5a8';
-                    }
-                } else if (isAttMe) {
-                    msg.innerText = 'Ваш первый ход! Кликните любую карту.';
-                    msg.style.color = '#f1c40f';
-                } else {
-                    msg.innerText = 'Ход соперника...';
-                    msg.style.color = '#a0b5a8';
-                }
-            }
+let swipeStartY = 0, swipeCardId = null, swipeMoved = false, suppressClick = false;
+$('hand')?.addEventListener('touchstart', e => {
+  const card = e.target.closest('.card');
+  if (card && card.classList.contains('playable')) {
+    swipeStartY = e.touches[0].clientY;
+    swipeCardId = card.dataset.id;
+    swipeMoved = false;
+    suppressClick = false;
+  }
+}, { passive: true });
+$('hand')?.addEventListener('touchmove', e => {
+  if (swipeCardId) {
+    const dy = Math.abs(e.touches[0].clientY - swipeStartY);
+    if (dy > 10) swipeMoved = true;
+  }
+}, { passive: true });
+$('hand')?.addEventListener('touchend', e => {
+  if (!swipeCardId) return;
+  const endY = e.changedTouches[0].clientY;
+  if (swipeMoved || swipeStartY - endY > 40) {
+    suppressClick = true;
+    if (swipeStartY - endY > 40) playCard(parseInt(swipeCardId));
+  }
+  swipeCardId = null;
+  swipeMoved = false;
+}, { passive: true });
 
-            const allCovered = table.length > 0 && table.every(pair => pair.defense !== null);
-            const btnTake = document.getElementById('btn-take');
-            const btnDone = document.getElementById('btn-done');
-            const btnPass = document.getElementById('btn-pass');
-            btnTake.style.display = isDefMe && table.length > 0 ? 'block' : 'none';
-            btnDone.style.display = !isDefMe && table.length > 0 && allCovered ? 'block' : 'none';
-            btnPass.style.display = !isDefMe && table.length > 0 && isMyThrowTurn ? 'block' : 'none';
-        }
-
-        function playCard(idx) {
-            const rCode = currentRoomCode || (gameState && gameState.roomCode);
-            if (!rCode) return;
-            socket.emit('player_action', { roomCode: rCode, action: 'play_card', cardIdx: idx });
-        }
-
-        function sendAction(action) {
-            const rCode = currentRoomCode || (gameState && gameState.roomCode);
-            if (!rCode) return;
-            socket.emit('player_action', { roomCode: rCode, action });
-        }
-
-        document.getElementById('room-code').addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') joinRoom();
-        });
-    </script>
+/* ============================================================
+   INIT
+   ============================================================ */
+loadSettings();
+$('code').addEventListener('input', e => {
+  e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4);
+});
+['click', 'touchstart', 'keydown'].forEach(ev =>
+  document.addEventListener(ev, () => {
+    try {
+      const c = ac();
+      if (c.state === 'suspended') c.resume();
+    } catch {}
+  }, { once: true, passive: true })
+);
+socket.emit('client_ready');
+</script>
 </body>
 </html>
